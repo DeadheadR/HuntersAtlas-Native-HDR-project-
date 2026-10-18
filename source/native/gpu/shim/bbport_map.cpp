@@ -441,6 +441,21 @@ void PollTestCommands() {
             }
             request_ack["measurement_generation"]=measurement.generation;
         }
+        if(command=="atlas2-audit-flags"&&BbMapStatic::Enabled()&&!measurement.active) {
+            const char* qa=std::getenv("BB_ATLAS_QA");BbMapLocation fresh{};runtime_map_location(&fresh);
+            if(qa&&std::string(qa)=="1"&&fresh.valid&&runtime_atlas_travel_supported()) {
+                BbMapFeatures::Refresh(true);Json audit={{"schema",1},{"pose",{{"valid",true},{"block",fresh.block},{"x",fresh.x},{"y",fresh.y},{"z",fresh.z},{"yaw",fresh.yaw}}},{"areas",Json::array()}};
+                for(const auto& a:areas){Json entries=Json::array();for(const auto& d:BbMapFeatures::Destinations())if(d.area==a.id){Json on=Json::array(),off=Json::array();for(unsigned i=0;i<d.native.on_count;++i)on.push_back(runtime_atlas_flag(d.native.on[i]));for(unsigned i=0;i<d.native.off_count;++i)off.push_back(runtime_atlas_flag(d.native.off[i]));entries.push_back({{"destination_id",d.native.return_point},{"unlock_required",d.native.unlock_flag!=0},{"unlock_state",d.native.unlock_flag?runtime_atlas_flag(d.native.unlock_flag):1},{"on_states",on},{"off_states",off},{"discovered",d.discovered},{"eligible",d.available}});}audit["areas"].push_back({{"area",a.name},{"destinations",entries}});}
+                if(const char* trace=std::getenv("BB_MAP_TEST_TRACE")){const auto result=std::string(trace)+".flag-audit.json",pending=result+".tmp";{std::ofstream f(pending);f<<audit.dump();}
+#ifdef _WIN32
+                    MoveFileExA(pending.c_str(),result.c_str(),MOVEFILE_REPLACE_EXISTING);
+#else
+                    std::error_code ec;std::filesystem::rename(pending,result,ec);
+#endif
+                    request_ack["flag_audit_written"]=true;
+                }
+            } else request_ack["state"]="rejected";
+        }
         if(command.rfind("qa-mouse-",0)==0 || command.rfind("qa-resize ",0)==0)QueueQaMouse(command);
         if(command=="qa-key-insert") {
             const char* qa=std::getenv("BB_ATLAS_QA");
