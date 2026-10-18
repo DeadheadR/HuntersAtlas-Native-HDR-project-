@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #include "bbport_map.h"
+#include "bbport_map_static.h"
 #include "bbport_map_art.h"
 #include "bbport_atlas_style.h"
 #include "bbport_atlas_interiors.h"
@@ -47,6 +48,7 @@ struct NamedRegion {std::string name;float min_y=-1e9f,max_y=1e9f;bool main_loca
 struct Area {std::string id,name;float bounds[4]{};std::vector<Layer> layers;std::vector<Lamp> lamps;std::vector<Marker> markers;std::vector<NamedLandmark> named_landmarks;std::vector<NamedRegion> named_regions;bool loaded=false;std::string error;BbAtlasStyle::CutCache cut_cache;BbAtlasInteriors::Cache interior_cache;};
 std::recursive_mutex map_mutex;
 std::vector<Area> areas;
+Area reference_area; // Lazy, single-area V1 reference; original source remains identifiable.
 std::filesystem::path directory,config;
 std::filesystem::path name_catalog;
 bool enabled=true,follow=true,preview_active=false,elevation_shading=true;
@@ -88,7 +90,9 @@ bool Load(Area& a) {
     if(a.loaded)return a.error.empty();
     a.loaded=true;
     try {
-        std::ifstream f(directory/(a.id+".json"));Json j;f>>j;
+        std::filesystem::path source=directory;
+        if(&a==&reference_area){const char* ref=std::getenv("BB_ATLAS2_REFERENCE_DIR");if(!ref)throw std::runtime_error("Reference maps unavailable");source=ref;}
+        std::ifstream f(source/(a.id+".json"));Json j;f>>j;
         const int version=j.at("version");
         if((version!=1 && version!=2) || j.at("id")!=a.id)throw std::runtime_error("Map data version mismatch");
         for(const auto& l:j.at("layers")) {
@@ -247,7 +251,7 @@ void SetOpen(bool value) {
     cursor_u=cursor_v=.5f;selected_destination=-1;travel_dialog=-1;
     if(open){runtime_map_location(&location);Recenter();preview_active=false;preview_area=-1;}
 }
-int AutoLayer(const Area& a) {
+int AutoLayerV1(const Area& a) {
     int nearest=-1,local=-1;float distance=std::numeric_limits<float>::infinity(),local_distance=std::numeric_limits<float>::infinity();
     for(size_t i=0;i<a.layers.size();++i){
         const auto& layer=a.layers[i];float d=std::abs(location.y-layer.anchor);
@@ -264,7 +268,12 @@ int AutoLayer(const Area& a) {
     }
     return local>=0?local:nearest;
 }
+int AutoLayer(const Area& a) {
+    if(BbMapStatic::Enabled())return BbMapStatic::Select(a.id,location.x,location.y,location.z,location.valid!=0,!preview_active);
+    return AutoLayerV1(a);
+}
 int PrimaryLayer(const Area& a) {
+    if(BbMapStatic::Enabled())return BbMapStatic::Primary(a.id);
     if(a.layers.empty())return -1;
     size_t best=0;float footprint=0;
     for(size_t i=0;i<a.layers.size();++i){
@@ -285,7 +294,7 @@ bool Testing::AutoLayerSelectsClosestSurface() {
     Triangle balcony_surface=stair_surface;balcony_surface.y[0]=balcony_surface.y[1]=balcony_surface.y[2]=2.5f;balcony.triangles.push_back(balcony_surface);
     synthetic.layers.push_back(std::move(stair));synthetic.layers.push_back(std::move(balcony));
     const BbMapLocation previous=location;location={.5f,3.8f,.5f,0.0f,0,1};
-    const bool passed=AutoLayer(synthetic)==0;location=previous;return passed;
+    const bool passed=AutoLayerV1(synthetic)==0;location=previous;return passed;
 }
 void Init() {
     std::lock_guard<std::recursive_mutex> map_guard(map_mutex);
@@ -412,6 +421,13 @@ void PollTestCommands() {
             }
         }
         if(command=="open" || command=="close") {SDL_Event e{};e.type=SDL_EVENT_KEY_DOWN;e.key.key=map_keys[keyboard];if((command=="open")!=bool(open))HandleEvent(e);}
+        BbMapStatic::Command(command);
+        if(BbMapStatic::Enabled()&&command.rfind("atlas2-travel ",0)==0) {
+            const char* qa=std::getenv("BB_ATLAS_QA");
+            if(qa&&std::string(qa)=="1"&&runtime_atlas_travel_supported()) {
+                try {const int point=std::stoi(command.substr(14));for(const auto& d:BbMapFeatures::Destinations())if(d.available&&d.native.return_point==point){runtime_atlas_travel_request(&d.native);break;}}catch(...){}
+            }
+        }
         if(command=="fit")Fit();
         if(command=="recenter")Recenter();
         if(command=="zoom-in"||command=="zoom-out")MappedPad(command=="zoom-in"?0x200:0x100,128,128);
@@ -435,6 +451,15 @@ void PollTestCommands() {
     if(const char* trace=std::getenv("BB_MAP_TEST_TRACE")) {
         const auto temp=std::string(trace)+".tmp";
         BbMenuSoundStats audio_stats{};runtime_audio_menu_stats(&audio_stats);
+        if(BbMapStatic::Enabled()) {
+            auto stats=BbMapStatic::Stats();stats["pose"]={{"valid",sample.valid!=0},{"block",sample.block},{"x",sample.x},{"y",sample.y},{"z",sample.z},{"yaw",sample.yaw}};
+            stats["open"]=bool(open);stats["capture"]=CapturesInput();stats["zoom"]=zoom;stats["center"]={cx,cz};
+            const int live=CurrentArea();if(live>=0&&reference_area.id==areas[live].id&&reference_area.loaded)stats["v1_layer"]=AutoLayerV1(reference_area);
+            stats["projection"]=BbMapStatic::ProjectionMetrics(sample.x,sample.z,zoom);stats["reference_commit"]="4ee4a0edf00ca87797e40f7ad73c27c9b2198625";
+            stats["safe_destinations"]=Json::array();
+            for(const auto& d:BbMapFeatures::Destinations())if(d.available){std::string label="Area00";for(const auto& a:areas)if(a.id==d.area)label=a.name;stats["safe_destinations"].push_back({{"area",label},{"region_id",d.area},{"return_point",d.native.return_point},{"arrival_xyz",{d.native.arrival[0],d.native.arrival[1],d.native.arrival[2]}},{"marker_xyz",{d.x,d.y,d.z}}});}
+            std::ofstream f(std::string(trace)+".atlas2.json");f<<stats.dump();
+        }
         {BbMapMenu menu_state{};runtime_map_menu_state(&menu_state);std::ofstream f(temp);const int live=CurrentArea();int live_layer=-1;if(live>=0&&Load(areas[live]))live_layer=AutoLayer(areas[live]);f<<Json{{"ui",qa_layout},{"audio_decoded_move",audio_stats.decoded_move},{"audio_decoded_select",audio_stats.decoded_select},{"audio_queued_move",audio_stats.queued_move},{"audio_queued_select",audio_stats.queued_select},{"audio_mixed_move",audio_stats.mixed_move},{"audio_mixed_select",audio_stats.mixed_select},{"audio_muted",audio_stats.muted},{"valid",sample.valid!=0},{"block",sample.block},{"x",sample.x},{"y",sample.y},{"z",sample.z},{"yaw",sample.yaw},{"menu",runtime_map_menu_open()!=0},{"menu_supported",menu_state.supported!=0},{"menu_top",menu_state.top_level!=0},{"native_focus",menu_state.selected},{"atlas_focus",BbAtlasMenu::Focused()},{"tile",BbAtlasMenu::Visible()},{"confirm",runtime_map_confirm_button()},{"open",bool(open)},{"capture",CapturesInput()},{"qa_mouse_events",qa_mouse_events.load()},{"enabled",enabled},{"shading",elevation_shading},{"travel_supported",runtime_atlas_travel_supported()!=0},{"travel_status",runtime_atlas_travel_status()},{"available_lamps",BbMapFeatures::Available().size()},{"selected_destination",selected_destination},{"travel_dialog",travel_dialog},{"items_enabled",BbMapFeatures::ItemsEnabled()},{"fog_enabled",BbMapFeatures::FogEnabled()},{"feature_error",BbMapFeatures::Error()},{"lamp_central",runtime_atlas_flag(12417830)},{"lamp_cathedral",runtime_atlas_flag(12407810)},{"boss_gascoigne",runtime_atlas_flag(12411800)},{"boss_amelia",runtime_atlas_flag(12401800)},{"selected",selected},{"current_layer",live_layer},{"zoom",zoom},{"cx",cx},{"cz",cz},{"follow",follow},{"title",live>=0?LocationTitle(areas[live]):std::string{}},{"subtitle",live>=0?LocationSubtitle(areas[live]):std::string{}}}.dump();}
 #ifdef _WIN32
         MoveFileExA(temp.c_str(),trace,MOVEFILE_REPLACE_EXISTING);
@@ -483,6 +508,7 @@ void Draw() {
     std::lock_guard<std::recursive_mutex> map_guard(map_mutex);
     if(!open)return;
     runtime_map_location(&location);
+    if(BbMapStatic::Enabled()&&!location.valid)BbMapStatic::Select({},0,0,0,false);
     BbMapFeatures::Refresh(location.valid!=0);
     const bool cancel_dialog=back_request.exchange(false);
     if(cancel_dialog && travel_dialog<0){Close();return;}
@@ -566,10 +592,14 @@ void Draw() {
     auto outline=[&](const std::vector<Point>& ring,ImU32 color,float width){for(size_t i=0;i<ring.size();++i){const auto a=ring[i],b=ring[(i+1)%ring.size()];if(visible(std::min(a.x,b.x),std::min(a.z,b.z),std::max(a.x,b.x),std::max(a.z,b.z)))draw->AddLine(project(a.x,a.z),project(b.x,b.z),color,width);}};
     if(!available){const char* message=location.valid?"Map data is not available for this location":"Your position is unavailable while loading or outside a supported area";const ImVec2 extent=font->CalcTextSizeA(20*scale,FLT_MAX,0,message);draw->AddText(font,20*scale,ImVec2(canvas_center.x-extent.x*.5f,canvas_center.y-10*scale),muted,message);}
     else {
-        auto& a=areas[selected];
+        auto& metadata=areas[selected];
+        if(BbMapStatic::Enabled()&&BbMapStatic::Mode()!=0&&reference_area.id!=metadata.id){reference_area=Area{};reference_area.id=metadata.id;reference_area.name=metadata.name;std::copy(std::begin(metadata.bounds),std::end(metadata.bounds),reference_area.bounds);}
+        const bool reference=BbMapStatic::Enabled()&&BbMapStatic::Mode()!=0&&Load(reference_area);
+        auto& a=reference?reference_area:metadata;
         int active=current==selected&&!preview_active?AutoLayer(a):PrimaryLayer(a);
         if(preview_active&&selected_destination>=0&&destinations[selected_destination].area==a.id){const auto saved=location;const auto& d=destinations[selected_destination];location.x=d.x;location.y=d.y;location.z=d.z;active=AutoLayer(a);location=saved;}
         if(active>=0)render_y=a.layers[active].anchor;
+        if(!BbMapStatic::Enabled()||BbMapStatic::Mode()!=0) {
         // Reserve actual glyph footprints in screen space as well as excluding
         // collision floors in world space. Transparent icon edges stay clean.
         std::vector<BbAtlasStyle::Box> glyph_masks;
@@ -664,6 +694,8 @@ void Draw() {
             for(const auto& ring:layer.outlines)outline(ring,IM_COL32(204,193,163,220),.85f*scale);
             const float wall=std::clamp(zoom*.13f,2.5f*scale,5.0f*scale);for(const auto& w:layer.walls)if(visible(std::min(w.a.x,w.b.x),std::min(w.a.z,w.b.z),std::max(w.a.x,w.b.x),std::max(w.a.z,w.b.z)))draw->AddLine(project(w.a.x,w.a.z),project(w.b.x,w.b.z),IM_COL32(15,18,19,255),wall);
         }
+        }
+        if(BbMapStatic::Enabled()&&BbMapStatic::Mode()!=1)BbMapStatic::Draw(draw,a.id,active,canvas_center,canvas_size,cx,cz,zoom,BbMapStatic::Mode()==2?.5f:1.f);
         const float marker_height=active>=0?a.layers[active].span:6.0f;
         auto marker=[&](float x,float y,float z,const std::string& kind,const std::string& name){const auto p=project(x,z);if(p.x<origin.x-22*scale||p.y<origin.y-22*scale||p.x>origin.x+canvas_size.x+22*scale||p.y>origin.y+canvas_size.y+22*scale)return;if(active>=0&&std::abs(y-a.layers[active].anchor)>std::max(6.0f,marker_height*1.4f))return;const char* icon=kind=="lamp"?"lamp":kind=="ladder"?"ladder":kind=="gate"?"gate":"talk";BbMapArt::DrawIcon(draw,icon,p,32.0f*scale);if(hovered&&std::hypot(ImGui::GetIO().MousePos.x-p.x,ImGui::GetIO().MousePos.y-p.y)<18.0f*scale){if(kind=="gate")ImGui::SetTooltip("%s\nOpenable gate / door\nMay require unlocking; status is not tracked.",name.c_str());else ImGui::SetTooltip("%s",name.c_str());}};
         for(size_t i=0;i<destinations.size();++i) {

@@ -28,6 +28,8 @@ bool ItemCategoryEnabled(const char* category);
 bool FogEnabled();
 const std::string& Error();
 bool Revealed(const std::string& area,float x,float y,float z);
+// Authored reveal-rule flag decisions, evaluated once outside static tile loops.
+std::vector<bool> StaticRegionVisibility(const std::string& area);
 bool NpcVisible(const std::string& area,int entity);
 std::vector<Pickup> Pickups(const std::string& area);
 }

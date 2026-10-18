@@ -123,6 +123,15 @@ bool Revealed(const std::string& area,float x,float y,float z) {
     }
     return false;
 }
+std::vector<bool> StaticRegionVisibility(const std::string& area) {
+    std::vector<bool> result;auto it=areas.find(area);if(it==areas.end())return result;
+    for(const auto& rule:it->value("reveal_regions",Json::array())) {
+        bool shown=requirements(rule);
+        if(rule.contains("reveal_when"))shown=shown&&evaluate(rule["reveal_when"])==1;
+        for(const auto& id:rule.value("boss_flags",Json::array()))shown=shown&&flag(id.get<unsigned>())==1;
+        result.push_back(shown);
+    }return result;
+}
 bool NpcVisible(const std::string& area,int entity) {
     if(npc_mode=="hidden")return false;
     if(npc_mode=="all")return true;

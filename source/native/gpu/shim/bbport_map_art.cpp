@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #include "bbport_map_art.h"
+#include "bbport_map_static.h"
 #include "bbport_atlas_paths.h"
 #include "imgui_internal.h"
 
@@ -130,6 +131,7 @@ bool Init() {
 
 void Shutdown() {
     if (!ImGui::GetCurrentContext()) return;
+    BbMapStatic::Shutdown();
     ForgetTexture(background);
     ForgetTexture(icons);
     ForgetTexture(parchment);

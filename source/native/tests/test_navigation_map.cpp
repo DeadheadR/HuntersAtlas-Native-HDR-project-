@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #include "../gpu/shim/bbport_map.h"
 #include "../gpu/shim/bbport_map_direction.h"
+#include "../gpu/shim/bbport_atlas_menu.h"
+#include "../gpu/shim/bbport_map_static.h"
 #include "../src/runtime_map.h"
 #include "imgui.h"
 #include <SDL3/SDL.h>
@@ -20,7 +22,8 @@ extern "C" int runtime_map_location(BbMapLocation* out) {
 void key(SDL_Keycode value) {SDL_Event e{};e.type=SDL_EVENT_KEY_DOWN;e.key.key=value;assert(BbMap::HandleEvent(e));}
 void frame() {
     ImGui::NewFrame();BbMap::Draw();ImGui::Render();
-    assert(ImGui::GetDrawData()->TotalVtxCount>100);
+    if(BbMap::IsOpen())assert(ImGui::GetDrawData()->TotalVtxCount>100);
+    else assert(!BbMap::CapturesInput());
 }
 int main(int argc,char**) {
     assert(BbMap::Testing::AutoLayerSelectsClosestSurface());
@@ -40,13 +43,14 @@ int main(int argc,char**) {
     key(SDLK_H);frame();key(SDLK_H);frame();
     key(SDLK_H);frame();
     valid=false;frame(); // Loading must remove the player marker without crashing.
-    key(SDLK_ESCAPE);assert(!BbMap::IsOpen());key(SDLK_M);assert(BbMap::IsOpen());key(SDLK_M);assert(!BbMap::IsOpen());
+    key(SDLK_ESCAPE);assert(BbMap::IsOpen());frame();assert(!BbMap::IsOpen());key(SDLK_M);assert(BbMap::IsOpen());key(SDLK_M);assert(!BbMap::IsOpen());
     SDL_Event e{};e.type=SDL_EVENT_GAMEPAD_BUTTON_DOWN;e.gbutton.which=1;
     e.gbutton.button=SDL_GAMEPAD_BUTTON_RIGHT_STICK;
     assert(!BbMap::HandleEvent(e));assert(!BbMap::IsOpen()); // Normal gameplay unaffected.
     menu_open=true;assert(!BbMap::HandleEvent(e));assert(!BbMap::IsOpen()); // Loading/unavailable player is guarded.
-    valid=true;assert(BbMap::HandleEvent(e));assert(BbMap::IsOpen() && BbMap::CapturesInput());
-    e.gbutton.button=SDL_GAMEPAD_BUTTON_EAST;assert(BbMap::HandleEvent(e));assert(!BbMap::IsOpen());
+    valid=true;assert(!BbMap::HandleEvent(e)); // Physical events never bypass the verified logical adapter.
+    assert(!BbMap::IsOpen());BbAtlasMenu::RoutePad(0,128,128,128,128);BbAtlasMenu::RoutePad(0x4u,128,128,128,128);assert(BbMap::IsOpen() && BbMap::CapturesInput());
+    BbMap::Back();frame();assert(!BbMap::IsOpen());
     assert(menu_open);menu_open=false; // Closing the atlas does not alter the underlying game menu.
     valid=true;
     std::ifstream atlas_file(std::string(std::getenv("BB_MAP_DIR"))+"/atlas.json");nlohmann::json atlas;atlas_file>>atlas;
@@ -56,10 +60,10 @@ int main(int argc,char**) {
         key(SDLK_M);frame();key(SDLK_HOME);frame();key(SDLK_M);
     }
     key(SDLK_M);e.type=SDL_EVENT_GAMEPAD_BUTTON_DOWN;e.gbutton.button=SDL_GAMEPAD_BUTTON_WEST;
-    assert(BbMap::HandleEvent(e));frame();
-    e.gbutton.button=SDL_GAMEPAD_BUTTON_WEST;assert(BbMap::HandleEvent(e));frame();
-    e.gbutton.button=SDL_GAMEPAD_BUTTON_SOUTH;assert(BbMap::HandleEvent(e));frame();
-    e.gbutton.button=SDL_GAMEPAD_BUTTON_EAST;assert(BbMap::HandleEvent(e));assert(!BbMap::IsOpen());
+    assert(!BbMap::HandleEvent(e));BbMap::MappedPad(0,128,128);BbMap::MappedPad(0x8000u,128,128);frame();
+    e.gbutton.button=SDL_GAMEPAD_BUTTON_WEST;assert(!BbMap::HandleEvent(e));BbMap::MappedPad(0x8000u,128,128);frame();
+    e.gbutton.button=SDL_GAMEPAD_BUTTON_SOUTH;assert(!BbMap::HandleEvent(e));BbMap::MappedPad(0x4000u,128,128);frame();
+    e.gbutton.button=SDL_GAMEPAD_BUTTON_EAST;assert(!BbMap::HandleEvent(e));BbMap::Back();frame();assert(!BbMap::IsOpen());
     e.type=SDL_EVENT_KEY_DOWN;e.key.key=SDLK_A;assert(!BbMap::HandleEvent(e));
-    ImGui::DestroyContext();std::puts("NAVIGATION_MAP_UI_PASS");
+    BbMapStatic::Shutdown();ImGui::DestroyContext();std::puts("NAVIGATION_MAP_UI_PASS");
 }
