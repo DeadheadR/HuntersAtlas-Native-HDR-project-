@@ -21,7 +21,8 @@ def main():
         assert env['BB_ATLAS2_ENABLED']=='1' and env['BB_PREP_WORKERS']=='0'
         assert env['BB_MAP_FOG_ENABLED']=='1'
         assert Path(env['BB_USER_DIR']).is_relative_to(work)
-        assert env['BB_ATLAS2_INDEX_SHA256']==sha(work/'packs/atlas2-index.json')
+        configured_packs=Path(json.loads((root/'atlas2-local.json').read_text())['directory']).resolve();configured_packs.relative_to(work)
+        assert env['BB_ATLAS2_INDEX_SHA256']==sha(configured_packs/'atlas2-index.json')
         for record in json.loads((Path(env['BB_MAP_DIR'])/'atlas.json').read_text())['maps']:
             data=json.loads((Path(env['BB_MAP_DIR'])/(record['id']+'.json')).read_text())
             assert all(not l['triangles'] and not l['walls'] for l in data['layers'])

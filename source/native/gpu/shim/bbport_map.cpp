@@ -761,7 +761,7 @@ void Draw() {
             const float wall=std::clamp(zoom*.13f,2.5f*scale,5.0f*scale);for(const auto& w:layer.walls)if(visible(std::min(w.a.x,w.b.x),std::min(w.a.z,w.b.z),std::max(w.a.x,w.b.x),std::max(w.a.z,w.b.z)))draw->AddLine(project(w.a.x,w.a.z),project(w.b.x,w.b.z),IM_COL32(15,18,19,255),wall);
         }
         }
-        if(BbMapStatic::Enabled()&&BbMapStatic::Mode()!=1)BbMapStatic::Draw(draw,a.id,active,canvas_center,canvas_size,cx,cz,zoom,BbMapStatic::Mode()==2?.5f:1.f);
+        if(BbMapStatic::Enabled()&&BbMapStatic::Mode()!=1)BbMapStatic::Draw(draw,a.id,active,canvas_center,canvas_size,cx,cz,zoom,BbMapStatic::Mode()==2?.5f:1.f,elevation_shading,scale);
         const float marker_height=active>=0?a.layers[active].span:6.0f;
         auto marker=[&](float x,float y,float z,const std::string& kind,const std::string& name){const auto p=project(x,z);if(p.x<origin.x-22*scale||p.y<origin.y-22*scale||p.x>origin.x+canvas_size.x+22*scale||p.y>origin.y+canvas_size.y+22*scale)return;if(active>=0&&std::abs(y-a.layers[active].anchor)>std::max(6.0f,marker_height*1.4f))return;const char* icon=kind=="lamp"?"lamp":kind=="ladder"?"ladder":kind=="gate"?"gate":"talk";BbMapArt::DrawIcon(draw,icon,p,32.0f*scale);if(hovered&&std::hypot(ImGui::GetIO().MousePos.x-p.x,ImGui::GetIO().MousePos.y-p.y)<18.0f*scale){if(kind=="gate")ImGui::SetTooltip("%s\nOpenable gate / door\nMay require unlocking; status is not tracked.",name.c_str());else ImGui::SetTooltip("%s",name.c_str());}};
         for(size_t i=0;i<destinations.size();++i) {

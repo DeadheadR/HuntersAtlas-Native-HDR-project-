@@ -6,8 +6,8 @@ from private_runtime import isolate_overlay
 def sha(p):return hashlib.sha256(Path(p).read_bytes()).hexdigest()
 def write(p,v):p.write_text(json.dumps(v,indent=2),encoding='utf-8')
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument('work',type=Path);parser.add_argument('--native-build',type=Path);parser.add_argument('--measurement',action='store_true');a=parser.parse_args();work=a.work.resolve();root=work/'Atlas2-test';native_build=a.native_build.resolve() if a.native_build else work/'native-build'
-    config=json.loads((root/'atlas2-local.json').read_text());config.update(allowed_user_root=str(work),index_sha256=sha(work/'packs/atlas2-index.json'),measurement=a.measurement);write(root/'atlas2-local.json',config)
+    parser=argparse.ArgumentParser();parser.add_argument('work',type=Path);parser.add_argument('--native-build',type=Path);parser.add_argument('--pack-root',type=Path);parser.add_argument('--measurement',action='store_true');a=parser.parse_args();work=a.work.resolve();root=work/'Atlas2-test';native_build=a.native_build.resolve() if a.native_build else work/'native-build';pack_root=a.pack_root.resolve() if a.pack_root else work/'packs';pack_root.relative_to(work)
+    config=json.loads((root/'atlas2-local.json').read_text());config.update(allowed_user_root=str(work),directory=str(pack_root),index_sha256=sha(pack_root/'atlas2-index.json'),measurement=a.measurement);write(root/'atlas2-local.json',config)
     for name in ['Install.cmd','Update.cmd','Uninstall.cmd']:
         (root/name).write_text('@echo off\necho Local experimental profile. Use Start-Atlas2.cmd. System installation is disabled.\nexit /b 1\n',encoding='utf-8')
     for name in ['entry.py','integrated_play.py']:
