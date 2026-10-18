@@ -44,6 +44,9 @@ class Channel:
         self.deadline=None
     def read(self):
         state=read_json(self.trace)
+        for _ in range(2):
+            if state.get('schema')==2 and isinstance(state.get('sequence'),int):break
+            self.sleep(.02);state=read_json(self.trace)
         if state.get('schema')!=2 or not isinstance(state.get('sequence'),int):raise ProtocolError('Fresh schema-2 telemetry required')
         if abs(self.wall()-state.get('utc_ms',0)/1000)>self.max_age:raise ProtocolError('Stale native telemetry')
         pid=state.get('process_id')

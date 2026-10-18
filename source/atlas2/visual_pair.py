@@ -1,6 +1,6 @@
 """Attach later to one private native session; never starts a game or reserves GPU."""
 from pathlib import Path
-import argparse,hashlib,math,runpy,sys
+import argparse,math,sys
 sys.path.insert(0,str(Path(__file__).resolve().parent))
 from live_protocol import Channel,ProtocolError,atomic_json,matched_pose
 
@@ -45,10 +45,9 @@ def main():
     if not isinstance(strict,int) or strict<0:raise ProtocolError('A confirmed current floor is required')
     channel.command('atlas2-floor '+str(strict));rows=[];capture=None
     if a.capture:
-        driver=runpy.run_path(str(Path(__file__).resolve().parents[1]/'owned/tests/drive_game.py'))
+        from capture_ui import capture_ui
         def capture():
-            result=driver['capture_first_frame'](session,timeout=20)
-            return [dict(path=path,sha256=hashlib.sha256(Path(path).read_bytes()).hexdigest()) for path in result['frames']]
+            return capture_ui(session,timeout=20)
     try:
         for preset in a.presets:
             channel.command('atlas2-static');issued=channel.command('recenter');channel.rendered(0,issued['sequence'])

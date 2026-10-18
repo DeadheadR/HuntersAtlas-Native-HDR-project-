@@ -140,3 +140,9 @@ Finite samples never establish every-coordinate coverage.
 All reports use Area01–Area16 or generic IDs. Private game-derived preview images,
 raw native traces and assets stay local and must not be attached to chat or Library.
 Rights review is required before any future public distribution of generated maps.
+
+## Controlled measurement follow-up
+
+See [PERFORMANCE-CHECKPOINT.md](PERFORMANCE-CHECKPOINT.md) for 36 controlled series in four available areas, full map CPU elapsed timing, native present intervals, sample counts, variance, cold-use limits and successful same-copy restart. `finalize_test.py --native-build <measurement-build> --measurement` opts into measurement instrumentation; default finalization restores the preserved prototype. `measure_session.py` records bounded native samples through `measure.h`; expensive extra conformance scans and the legacy raw trace are suppressed in this opt-in mode. Reference rendering uses the V1 floor selector during measurement. `summarize_measurements.py` derives statistics from raw samples.
+
+`visual_pair.py --capture` now uses the final swapchain UI capture implemented in `capture_ui.py`, with private PNG conversion verified against a known opaque UI palette. Generic game-frame captures precede Atlas composition and cannot establish map visual quality. `restart_session.py` only reuses a private copied-save session after the prior process exits. Save/position inventory tools are read-only; recorded XYZ never authorize arbitrary-coordinate memory writes.

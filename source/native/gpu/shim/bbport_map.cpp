@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #include "bbport_map.h"
 #include "bbport_map_static.h"
+#include "../../../atlas2/measure.h"
 #include "bbport_map_art.h"
 #include "bbport_atlas_style.h"
 #include "bbport_atlas_interiors.h"
@@ -37,6 +38,7 @@ namespace {
 using Json=nlohmann::json;
 Json qa_layout;
 Json atlas2_render_state=Json::object();
+Atlas2Measure::Recorder measurement;
 struct Rect {float x,z,w,h;};
 struct Point {float x,z;};
 struct Triangle {float v[6];float y[3]{};};
@@ -405,6 +407,7 @@ void QueueQaMouse(const std::string& command) {
 }
 void PollTestCommands() {
     std::lock_guard<std::recursive_mutex> map_guard(map_mutex);
+    measurement.Present();
     static const char* control=std::getenv("BB_MAP_TEST_CONTROL");
     if(!control || !*control)return;
     static uint64_t trace_sequence=0,last_request=0;
@@ -420,6 +423,23 @@ void PollTestCommands() {
             if(qa&&std::string(qa)=="1"&&(envelope>>id)&&id>last_request&&id>0&&std::getline(envelope>>std::ws,requested)&&!requested.empty()) {
                 last_request=id;command=requested;request_ack={{"id",id},{"command",command},{"state","consumed"},{"frame",ImGui::GetFrameCount()}};
             }else {command.clear();}
+        }
+        if(command.rfind("atlas2-measure-",0)==0&&measurement.Enabled()) {
+            if(command=="atlas2-measure-stop") {
+                measurement.active=false;
+                if(const char* trace=std::getenv("BB_MAP_TEST_TRACE")) {const auto result=std::string(trace)+".measurement.json",pending=result+".tmp";{std::ofstream f(pending);f<<measurement.Result().dump();}
+#ifdef _WIN32
+                    MoveFileExA(pending.c_str(),result.c_str(),MOVEFILE_REPLACE_EXISTING);
+#else
+                    std::error_code ec;std::filesystem::rename(pending,result,ec);
+#endif
+                }
+            } else {
+                const std::string start="atlas2-measure-start ",stat="atlas2-measure-open-static ",ref="atlas2-measure-open-reference ";
+                if(command.rfind(start,0)==0)measurement.Start(command.substr(start.size()));
+                if(command.rfind(stat,0)==0||command.rfind(ref,0)==0){const bool reference=command.rfind(ref,0)==0;measurement.Start(command.substr(reference?ref.size():stat.size()));auto setup=Atlas2Measure::Clock::now();BbMapStatic::Command(reference?"atlas2-reference":"atlas2-static");SetOpen(true);Recenter();measurement.setup_ms=std::chrono::duration<double,std::milli>(Atlas2Measure::Clock::now()-setup).count();}
+            }
+            request_ack["measurement_generation"]=measurement.generation;
         }
         if(command.rfind("qa-mouse-",0)==0 || command.rfind("qa-resize ",0)==0)QueueQaMouse(command);
         if(command=="qa-key-insert") {
@@ -469,13 +489,15 @@ void PollTestCommands() {
 #else
             stats["process_id"]=0;
 #endif
-            stats["ack"]=request_ack;stats["render"]=atlas2_render_state;stats["travel_status"]=runtime_atlas_travel_status();stats["travel_supported"]=runtime_atlas_travel_supported()!=0;
+            stats["measurement"]=measurement.State();stats["ack"]=request_ack;stats["render"]=atlas2_render_state;stats["travel_status"]=runtime_atlas_travel_status();stats["travel_supported"]=runtime_atlas_travel_supported()!=0;
             BbMapMenu menu{};runtime_map_menu_state(&menu);stats["menu_top"]=menu.top_level!=0;stats["menu_supported"]=menu.supported!=0;
             stats["open"]=bool(open);stats["capture"]=CapturesInput();stats["zoom"]=zoom;stats["center"]={cx,cz};
-            const int live=CurrentArea();if(live>=0&&open){stats["strict_layer"]=BbMapStatic::StrictLayer(areas[live].id,sample.x,sample.y,sample.z,sample.valid!=0);if(BbMapStatic::Mode()!=0&&reference_area.id==areas[live].id&&reference_area.loaded)stats["v1_layer"]=AutoLayerV1(reference_area);}
+            const int live=CurrentArea();if(live>=0&&open&&!measurement.active){stats["strict_layer"]=BbMapStatic::StrictLayer(areas[live].id,sample.x,sample.y,sample.z,sample.valid!=0);if(BbMapStatic::Mode()!=0&&reference_area.id==areas[live].id&&reference_area.loaded)stats["v1_layer"]=AutoLayerV1(reference_area);}
             stats["projection"]=BbMapStatic::ProjectionMetrics(sample.x,sample.z,zoom);stats["reference_commit"]="4ee4a0edf00ca87797e40f7ad73c27c9b2198625";
             stats["safe_destinations"]=Json::array();
             for(const auto& d:BbMapFeatures::Destinations())if(d.available){std::string label="Area00";for(const auto& a:areas)if(a.id==d.area)label=a.name;stats["safe_destinations"].push_back({{"area",label},{"region_id",d.area},{"return_point",d.native.return_point},{"arrival_xyz",{d.native.arrival[0],d.native.arrival[1],d.native.arrival[2]}},{"marker_xyz",{d.x,d.y,d.z}}});}
+            stats["destination_inventory"]=Json::array();
+            for(const auto& a:areas){int total=0,discovered=0,eligible=0;for(const auto& d:BbMapFeatures::Destinations())if(d.area==a.id){++total;discovered+=d.discovered;eligible+=d.available;}stats["destination_inventory"].push_back({{"area",a.name},{"authored",total},{"discovered",discovered},{"eligible",eligible},{"flags_valid",sample.valid!=0}});}
             const auto destination=std::string(trace)+".atlas2.json",pending=destination+".tmp";
             {std::ofstream f(pending);f<<stats.dump();}
 #ifdef _WIN32
@@ -484,7 +506,7 @@ void PollTestCommands() {
             std::error_code ec;std::filesystem::rename(pending,destination,ec);
 #endif
         }
-        {BbMapMenu menu_state{};runtime_map_menu_state(&menu_state);std::ofstream f(temp);const int live=CurrentArea();int live_layer=-1;if(live>=0&&Load(areas[live]))live_layer=AutoLayer(areas[live]);f<<Json{{"ui",qa_layout},{"audio_decoded_move",audio_stats.decoded_move},{"audio_decoded_select",audio_stats.decoded_select},{"audio_queued_move",audio_stats.queued_move},{"audio_queued_select",audio_stats.queued_select},{"audio_mixed_move",audio_stats.mixed_move},{"audio_mixed_select",audio_stats.mixed_select},{"audio_muted",audio_stats.muted},{"valid",sample.valid!=0},{"block",sample.block},{"x",sample.x},{"y",sample.y},{"z",sample.z},{"yaw",sample.yaw},{"menu",runtime_map_menu_open()!=0},{"menu_supported",menu_state.supported!=0},{"menu_top",menu_state.top_level!=0},{"native_focus",menu_state.selected},{"atlas_focus",BbAtlasMenu::Focused()},{"tile",BbAtlasMenu::Visible()},{"confirm",runtime_map_confirm_button()},{"open",bool(open)},{"capture",CapturesInput()},{"qa_mouse_events",qa_mouse_events.load()},{"enabled",enabled},{"shading",elevation_shading},{"travel_supported",runtime_atlas_travel_supported()!=0},{"travel_status",runtime_atlas_travel_status()},{"available_lamps",BbMapFeatures::Available().size()},{"selected_destination",selected_destination},{"travel_dialog",travel_dialog},{"items_enabled",BbMapFeatures::ItemsEnabled()},{"fog_enabled",BbMapFeatures::FogEnabled()},{"feature_error",BbMapFeatures::Error()},{"lamp_central",runtime_atlas_flag(12417830)},{"lamp_cathedral",runtime_atlas_flag(12407810)},{"boss_gascoigne",runtime_atlas_flag(12411800)},{"boss_amelia",runtime_atlas_flag(12401800)},{"selected",selected},{"current_layer",live_layer},{"zoom",zoom},{"cx",cx},{"cz",cz},{"follow",follow},{"title",live>=0?LocationTitle(areas[live]):std::string{}},{"subtitle",live>=0?LocationSubtitle(areas[live]):std::string{}}}.dump();}
+        if(!measurement.Enabled()){BbMapMenu menu_state{};runtime_map_menu_state(&menu_state);std::ofstream f(temp);const int live=CurrentArea();int live_layer=-1;if(live>=0&&Load(areas[live]))live_layer=AutoLayer(areas[live]);f<<Json{{"ui",qa_layout},{"audio_decoded_move",audio_stats.decoded_move},{"audio_decoded_select",audio_stats.decoded_select},{"audio_queued_move",audio_stats.queued_move},{"audio_queued_select",audio_stats.queued_select},{"audio_mixed_move",audio_stats.mixed_move},{"audio_mixed_select",audio_stats.mixed_select},{"audio_muted",audio_stats.muted},{"valid",sample.valid!=0},{"block",sample.block},{"x",sample.x},{"y",sample.y},{"z",sample.z},{"yaw",sample.yaw},{"menu",runtime_map_menu_open()!=0},{"menu_supported",menu_state.supported!=0},{"menu_top",menu_state.top_level!=0},{"native_focus",menu_state.selected},{"atlas_focus",BbAtlasMenu::Focused()},{"tile",BbAtlasMenu::Visible()},{"confirm",runtime_map_confirm_button()},{"open",bool(open)},{"capture",CapturesInput()},{"qa_mouse_events",qa_mouse_events.load()},{"enabled",enabled},{"shading",elevation_shading},{"travel_supported",runtime_atlas_travel_supported()!=0},{"travel_status",runtime_atlas_travel_status()},{"available_lamps",BbMapFeatures::Available().size()},{"selected_destination",selected_destination},{"travel_dialog",travel_dialog},{"items_enabled",BbMapFeatures::ItemsEnabled()},{"fog_enabled",BbMapFeatures::FogEnabled()},{"feature_error",BbMapFeatures::Error()},{"lamp_central",runtime_atlas_flag(12417830)},{"lamp_cathedral",runtime_atlas_flag(12407810)},{"boss_gascoigne",runtime_atlas_flag(12411800)},{"boss_amelia",runtime_atlas_flag(12401800)},{"selected",selected},{"current_layer",live_layer},{"zoom",zoom},{"cx",cx},{"cz",cz},{"follow",follow},{"title",live>=0?LocationTitle(areas[live]):std::string{}},{"subtitle",live>=0?LocationSubtitle(areas[live]):std::string{}}}.dump();}
 #ifdef _WIN32
         MoveFileExA(temp.c_str(),trace,MOVEFILE_REPLACE_EXISTING);
 #else
@@ -530,6 +552,7 @@ void SetTitleFont(ImFont* font){title_font=font;}
 ImFont* TitleFont(){return title_font?title_font:ImGui::GetFont();}
 void Draw() {
     std::lock_guard<std::recursive_mutex> map_guard(map_mutex);
+    Atlas2Measure::Scope measure_scope(measurement);
     if(!open)return;
     runtime_map_location(&location);
     if(BbMapStatic::Enabled()&&!location.valid)BbMapStatic::Select({},0,0,0,false);
@@ -620,12 +643,12 @@ void Draw() {
         if(BbMapStatic::Enabled()&&BbMapStatic::Mode()!=0&&reference_area.id!=metadata.id){reference_area=Area{};reference_area.id=metadata.id;reference_area.name=metadata.name;std::copy(std::begin(metadata.bounds),std::end(metadata.bounds),reference_area.bounds);}
         const bool reference=BbMapStatic::Enabled()&&BbMapStatic::Mode()!=0&&Load(reference_area);
         auto& a=reference?reference_area:metadata;
-        int active=current==selected&&!preview_active?AutoLayer(a):PrimaryLayer(a);
+        int active=current==selected&&!preview_active?(reference&&measurement.Enabled()?AutoLayerV1(a):AutoLayer(a)):PrimaryLayer(a);
         if(preview_active&&selected_destination>=0&&destinations[selected_destination].area==a.id){const auto saved=location;const auto& d=destinations[selected_destination];location.x=d.x;location.y=d.y;location.z=d.z;active=AutoLayer(a);location=saved;}
         if(active>=0)render_y=a.layers[active].anchor;
         if(BbMapStatic::Enabled()) {
             atlas2_render_state={{"frame",ImGui::GetFrameCount()},{"mode",BbMapStatic::Mode()},{"region_id",a.id},{"area",metadata.name},{"layer",active},{"preview",preview_active},{"zoom",zoom},{"center",{cx,cz}},{"ui_scale",scale},{"canvas_size",{canvas_size.x,canvas_size.y}},{"viewport_size",{full.x,full.y}},{"feature_settings",{{"fog",BbMapFeatures::FogEnabled()},{"items",BbMapFeatures::ItemsEnabled()},{"travel",BbMapFeatures::TravelEnabled()}}},{"pose",{{"valid",location.valid!=0},{"block",location.block},{"x",location.x},{"y",location.y},{"z",location.z},{"yaw",location.yaw}}}};
-            if(current==selected&&!preview_active){atlas2_render_state["strict_layer"]=BbMapStatic::StrictLayer(a.id,location.x,location.y,location.z,location.valid!=0);if(reference)atlas2_render_state["v1_layer"]=AutoLayerV1(reference_area);}
+            if(current==selected&&!preview_active&&!measurement.active){atlas2_render_state["strict_layer"]=BbMapStatic::StrictLayer(a.id,location.x,location.y,location.z,location.valid!=0);if(reference)atlas2_render_state["v1_layer"]=measurement.Enabled()?active:AutoLayerV1(reference_area);}
         }
         if(!BbMapStatic::Enabled()||BbMapStatic::Mode()!=0) {
         // Reserve actual glyph footprints in screen space as well as excluding

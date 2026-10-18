@@ -72,3 +72,7 @@ GPU mutex was released at **2026-10-18 20:58:57.4265015 UTC**. No forced termina
 was used in this batch. Post-run isolation validation passed; all 15 original save
 files remained hash-identical. The original Atlas installation, game and settings
 were not used as write targets. No remote push or release occurred.
+
+## Follow-up measurement and capture correction
+
+See PERFORMANCE-CHECKPOINT.md for the completed 36-series present-hook/CPU measurement and copied-save restart. The batch02 same-view telemetry remains valid, but its `output_*` images precede Atlas composition and are rejected for map visual review. Batch03 uses the supported final-swapchain `map-ui_*` hook; its four actual UI pairs remain private. No visual identity/readability pass is claimed. Raw flag 0 versus -1 was not separately retained, so absent discovered targets must not all be described as conclusively locked.
