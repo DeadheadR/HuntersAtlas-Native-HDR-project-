@@ -1,6 +1,6 @@
 """Fresh, correlated developer telemetry; never starts a process."""
 from pathlib import Path
-import ctypes,json,math,os,time
+import ctypes,hashlib,json,math,os,time
 
 class ProtocolError(RuntimeError):pass
 def read_json(path):
@@ -24,6 +24,19 @@ def process_image(pid):
         return Path(buf.value).resolve()
     finally:api.CloseHandle(handle)
 
+def verified_private_image(pid,expected):
+    """Accept the runner's private extracted image only when its bytes match."""
+    expected=Path(expected).resolve();actual=process_image(pid)
+    if actual==expected:return actual
+    state=expected.parent.parent/'state'
+    try:relative=actual.relative_to(state.resolve())
+    except ValueError:raise ProtocolError('Telemetry belongs to a different process')
+    if len(relative.parts)!=3 or not relative.parts[0].startswith('session-assets-') or relative.parts[1:]!=('bin',expected.name):
+        raise ProtocolError('Telemetry image is outside the private runner layout')
+    digest=lambda path:hashlib.sha256(path.read_bytes()).digest()
+    if digest(actual)!=digest(expected):raise ProtocolError('Private runner image content mismatch')
+    return actual
+
 class Channel:
     def __init__(self,trace,expected_executable=None,*,clock=time.monotonic,wall=time.time,sleep=time.sleep,max_age=5):
         self.trace=Path(trace);self.control=self.trace.parent/'control.txt';self.clock,self.wall,self.sleep=clock,wall,sleep;self.max_age=max_age;self.pid=None
@@ -36,7 +49,7 @@ class Channel:
         pid=state.get('process_id')
         if not isinstance(pid,int) or pid<=0:raise ProtocolError('Native process identity missing')
         if self.pid is None:
-            if self.expected_executable and process_image(pid)!=self.expected_executable:raise ProtocolError('Telemetry belongs to a different process')
+            if self.expected_executable:verified_private_image(pid,self.expected_executable)
             self.pid=pid
         if pid!=self.pid:raise ProtocolError('Native process changed during comparison')
         return state

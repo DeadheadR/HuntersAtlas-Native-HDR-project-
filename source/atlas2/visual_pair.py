@@ -1,6 +1,6 @@
 """Attach later to one private native session; never starts a game or reserves GPU."""
 from pathlib import Path
-import argparse,math,sys
+import argparse,hashlib,math,runpy,sys
 sys.path.insert(0,str(Path(__file__).resolve().parent))
 from live_protocol import Channel,ProtocolError,atomic_json,matched_pose
 
@@ -22,11 +22,13 @@ def same_view(a,b):
         else:return False,'view_field_missing_'+key
     return True,'matched'
 
-def pair(channel,preset):
+def pair(channel,preset,capture=None):
     before=channel.command('atlas2-static');static=channel.rendered(0,before['sequence'])
+    static_images=capture() if capture else []
     before=channel.command('atlas2-reference');reference=channel.rendered(1,before['sequence'])
+    reference_images=capture() if capture else []
     same,reason=same_view(static.get('render',{}),reference.get('render',{}))
-    return dict(preset=preset,status='matched_view_pending_visual_review' if same else 'inconclusive',reason=reason,static=static,reference=reference,images_attached=False,pixel_identity_claimed=False,gameplay_fps_measured=False)
+    return dict(preset=preset,status='matched_view_pending_visual_review' if same else 'inconclusive',reason=reason,static=static,reference=reference,private_images=dict(static=static_images,reference=reference_images),images_attached=False,pixel_identity_claimed=False,gameplay_fps_measured=False)
 
 def zoom_limit(channel,direction):
     last=None
@@ -38,17 +40,22 @@ def zoom_limit(channel,direction):
     raise ProtocolError('Zoom limit did not stabilize within bounded steps')
 
 def main():
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--session',type=Path,required=True);p.add_argument('--reserved-window',required=True);p.add_argument('--presets',nargs='+',choices=['default','fit','maximum_scaled','minimum_scaled'],default=['default','maximum_scaled']);a=p.parse_args()
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--session',type=Path,required=True);p.add_argument('--reserved-window',required=True);p.add_argument('--capture',action='store_true',help='Keep supported frame dumps private inside this session');p.add_argument('--presets',nargs='+',choices=['default','fit','maximum_scaled','minimum_scaled'],default=['default','maximum_scaled']);a=p.parse_args()
     work=Path(__file__).resolve().parents[2]/'.local/atlas2';session=a.session.resolve();session.relative_to(work.resolve());channel=Channel(session/'map-qa/trace.json.atlas2.json',work/'Atlas2-test/bin/bb-probe.exe');channel.command('open');issued=channel.command('atlas2-static');state=channel.rendered(0,issued['sequence']);strict=state['render'].get('strict_layer')
     if not isinstance(strict,int) or strict<0:raise ProtocolError('A confirmed current floor is required')
-    channel.command('atlas2-floor '+str(strict));rows=[]
+    channel.command('atlas2-floor '+str(strict));rows=[];capture=None
+    if a.capture:
+        driver=runpy.run_path(str(Path(__file__).resolve().parents[1]/'owned/tests/drive_game.py'))
+        def capture():
+            result=driver['capture_first_frame'](session,timeout=20)
+            return [dict(path=path,sha256=hashlib.sha256(Path(path).read_bytes()).hexdigest()) for path in result['frames']]
     try:
         for preset in a.presets:
             channel.command('atlas2-static');issued=channel.command('recenter');channel.rendered(0,issued['sequence'])
             if preset=='fit':issued=channel.command('fit');channel.rendered(0,issued['sequence'])
             elif preset=='maximum_scaled':zoom_limit(channel,'in')
             elif preset=='minimum_scaled':zoom_limit(channel,'out')
-            rows.append(pair(channel,preset));atomic_json(session/'matching-view-comparisons.json',dict(schema=1,reserved_window=a.reserved_window,comparisons=rows,visual_acceptance='unverified',all_coordinates_claimed=False))
+            rows.append(pair(channel,preset,capture));atomic_json(session/'matching-view-comparisons.json',dict(schema=1,reserved_window=a.reserved_window,comparisons=rows,visual_acceptance='unverified',all_coordinates_claimed=False))
     finally:channel.command('atlas2-floor-auto');channel.command('atlas2-static')
     print('MATCHED_VIEW_PAIRS_RECORDED='+str(sum(r['status']=='matched_view_pending_visual_review' for r in rows)))
 if __name__=='__main__':main()

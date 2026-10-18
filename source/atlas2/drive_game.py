@@ -2,10 +2,10 @@
 from pathlib import Path
 import argparse,ctypes,sys,time
 sys.path.insert(0,str(Path(__file__).resolve().parent))
-from live_protocol import Channel,ProtocolError,process_image
+from live_protocol import Channel,ProtocolError,verified_private_image
 
 def graceful_close(pid,expected):
-    if process_image(pid)!=expected.resolve():raise ProtocolError('Refusing to close a different process')
+    verified_private_image(pid,expected)
     user=ctypes.WinDLL('user32',use_last_error=True);callback_type=ctypes.WINFUNCTYPE(ctypes.c_int,ctypes.c_void_p,ctypes.c_void_p);windows=[]
     user.GetWindowThreadProcessId.argtypes=[ctypes.c_void_p,ctypes.POINTER(ctypes.c_uint32)];user.PostMessageW.argtypes=[ctypes.c_void_p,ctypes.c_uint32,ctypes.c_size_t,ctypes.c_ssize_t]
     @callback_type

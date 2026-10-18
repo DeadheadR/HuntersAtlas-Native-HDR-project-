@@ -94,6 +94,9 @@ It reuses the existing local opt-in test driver without modifying that original 
 and pins a local snapshot of it for both parent/child startup. It creates a fresh
 copied-save session. Run only one game process at a time. `drive_game.py` sends one
 named logical input or requests normal window closure for the verified private PID.
+The runner extracts its executable into a private `state/session-assets-*/bin`
+directory. Controls accept that exact layout only after hashing the extracted image
+against the expected private binary; an unrelated process or different image fails.
 
 The private cross-volume preparation overlay explicitly uses the runtime's existing
 `beside_game=False` implementation, keeping generated game views inside this
@@ -125,11 +128,14 @@ records all 602 planned layers with unverified live gaps until actual observatio
 exist; offline probes never become gameplay passes.
 Offline geometry anchors are **not** native teleport targets.
 
-Live testing remains pending until a reserved window is available: arrival/floor
-confirmation, map-open/closed/disabled performance at matched positions, first-open
-hitch, steady CPU/GPU frame times, actual texture allocation, death/load/restart and
-visual readability. Record exact tested destinations and area/layer pairs, plus
-unavailable areas. Finite samples never establish every-coordinate coverage.
+The first completed live batch checked eight eligible copied-save destinations in
+four areas, with eight exact matched V1/V2 poses and eight matching strict/rendered
+layers. Four additional same-view pairs cover default, maximum, minimum and Fit zoom.
+Thirteen live input/menu/manual-floor checks passed. Details and limitations are in
+[LIVE-CHECKPOINT.md](LIVE-CHECKPOINT.md). Twelve areas and 594 layers have no live
+destination sample. First-open hitch, reliable gameplay CPU/GPU frame times, actual
+driver texture allocation, death/restart and visual readability remain unverified.
+Finite samples never establish every-coordinate coverage.
 
 All reports use Area01–Area16 or generic IDs. Private game-derived preview images,
 raw native traces and assets stay local and must not be attached to chat or Library.

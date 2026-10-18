@@ -1,6 +1,7 @@
 from pathlib import Path
 import json,math,tempfile,unittest
-from live_protocol import Channel,ProtocolError,classify_comparison,matched_pose
+from unittest.mock import patch
+from live_protocol import Channel,ProtocolError,classify_comparison,matched_pose,verified_private_image
 
 class ProtocolTests(unittest.TestCase):
     def setUp(self):
@@ -37,4 +38,14 @@ class ProtocolTests(unittest.TestCase):
         p=dict(valid=True,block=1,x=0.,y=0.,z=0.,yaw=0.)
         result=classify_comparison(dict(render=dict(pose=p,strict_layer=1,layer=1),visible_tiles=0),dict(render=dict(pose=p,v1_layer=1)))
         self.assertEqual(result['status'],'pass');self.assertNotEqual(result['visual_acceptance'],'pass')
+    def test_private_runner_copy_requires_matching_content_and_layout(self):
+        expected=Path(self.temp.name)/'private/bin/bb-probe.exe';expected.parent.mkdir(parents=True);expected.write_bytes(b'verified build')
+        actual=expected.parent.parent/'state/session-assets-test/bin/bb-probe.exe';actual.parent.mkdir(parents=True);actual.write_bytes(expected.read_bytes())
+        with patch('live_protocol.process_image',return_value=actual.resolve()):self.assertEqual(verified_private_image(17,expected),actual.resolve())
+        actual.write_bytes(b'other build')
+        with patch('live_protocol.process_image',return_value=actual.resolve()):
+            with self.assertRaises(ProtocolError):verified_private_image(17,expected)
+        outside=Path(self.temp.name)/'unrelated/bin/bb-probe.exe';outside.parent.mkdir(parents=True);outside.write_bytes(expected.read_bytes())
+        with patch('live_protocol.process_image',return_value=outside.resolve()):
+            with self.assertRaises(ProtocolError):verified_private_image(17,expected)
 if __name__=='__main__':unittest.main()
