@@ -7,4 +7,5 @@ inline constexpr size_t CacheSlots = 64;
 // including their old in-flight versions; descriptors do not allocate images.
 inline constexpr unsigned RendererTextureReserve = 32;
 inline constexpr unsigned RendererImageDescriptors = CacheSlots + RendererTextureReserve;
+inline constexpr unsigned LineSegmentLimit = 16384;
 }

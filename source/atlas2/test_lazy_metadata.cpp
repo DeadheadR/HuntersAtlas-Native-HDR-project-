@@ -1,0 +1,13 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+#define main LegacyCacheMain
+#include "test_cache.cpp"
+#undef main
+int main(int argc,char**argv){try{Check(argc==4,"usage lazy-test copied-fixture mode report");fs::path root=fs::absolute(argv[1]);std::string mode=argv[2];auto area=root/"Area01",manifest=area/"manifest.json",indexfile=root/"atlas2-index.json";auto m=ReadJson(manifest);auto path=area/m["views"][0]["view_file"].get<std::string>();
+ if(mode=="layer"||mode=="transform"){auto v=ReadJson(path);if(mode=="layer")v["layer_index"]=1;else{v["ppu"]=4;v["width"]=1024;v["height"]=2048;v["world_to_image"]={4,0,0,0,-4,2048};}WriteJson(path,v);m["views"][0]["view_sha256"]=Hash(Read(path));WriteJson(manifest,m);auto idx=ReadJson(indexfile);idx["areas"][0]["manifest_sha256"]=Hash(Read(manifest));WriteJson(indexfile,idx);}
+ _putenv_s("BB_ATLAS2_ENABLED","1");_putenv_s("BB_ATLAS2_DIR",root.string().c_str());_putenv_s("BB_ATLAS2_INDEX_SHA256",Hash(Read(indexfile)).c_str());ImGui::CreateContext();auto& io=ImGui::GetIO();io.DisplaySize={1920,1080};io.DeltaTime=1.f/60;io.IniFilename=nullptr;io.BackendFlags|=ImGuiBackendFlags_RendererHasTextures;io.Fonts->AddFontDefault();
+ // Loading area headers and another floor must not read floor 0's external file.
+ Check(BbMapStatic::Load("synthetic_grid"),"area headers failed");if(mode=="missing")fs::rename(path,path.string()+".unavailable");if(mode=="corrupt"){auto b=Read(path);b.push_back(' ');Write(path,b);}
+ auto draw=[&](int layer){ImGui::NewFrame();BbMapStatic::Draw(ImGui::GetBackgroundDrawList(),"synthetic_grid",layer,{960,540},{575,767},96,384,3);ImGui::Render();Backend();};for(int i=0;i<16;++i)draw(1);Check(BbMapStatic::Stats()["integrity_failures"]==0,"unrelated lazy file was read");
+ for(int i=0;i<20;++i)draw(0);auto final=BbMapStatic::Stats();if(mode=="valid"){Check(final["integrity_failures"]==0&&final["loaded_detail_layer"]==0,"valid lazy reload");for(int i=0;i<10;++i){draw(1);draw(0);}Check(BbMapStatic::Stats()["integrity_failures"]==0,"metadata eviction/reload");}else Check(final["integrity_failures"]==1,"bad external view must fail once and stay rejected");
+ for(auto*t:ImGui::GetPlatformIO().Textures){t->SetTexID(ImTextureID_Invalid);t->BackendUserData=nullptr;}BbMapStatic::Shutdown();ImGui::DestroyContext();WriteJson(argv[3],{{"pass",true},{"mode",mode},{"backend","CPU fake"},{"no_game_content",true},{"stats",final}});std::cout<<"LAZY_METADATA_PASS mode="<<mode<<"\n";return 0;
+ }catch(const std::exception&e){std::cout<<"LAZY_METADATA_FAIL "<<e.what()<<"\n";return 1;}}
