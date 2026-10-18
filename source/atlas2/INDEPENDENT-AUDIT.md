@@ -42,3 +42,7 @@ Benchmark processes are closed. The separate census is still active at this inte
 ## Private evidence
 
 `.local/atlas2/build-parity-audit.json`, `stock-audit-preparation.json`, `approved-copy-inspection.json`; `.local/atlas2/audit-qa/runs/stock-clean04/stock-open-summary.json`, `stock-closed-summary.json`, `stock-map-parity.json`; `.local/atlas2/audit-qa/runs/atlas2-audit04/independent-audit-summary.json`, `reference-stock-canvas-parity.json`, `flag-state-summary.json`, native sample JSON and ETW CSV files. Raw game logs and all images stay private.
+
+## Completed copied-profile census and cleanup
+
+All five receipt-verified QA copies completed guarded inspection. Each exposes the same eight eligible destination IDs in the same four areas; no additional area was found and no unlock/condition read was unknown. Every original QA source remained hash-identical. No census teleport was requested. All test games exited normally. The private test installation was restored to the preserved prototype, original-save isolation validation passed, and the GPU mutex was released at **2026-10-18 22:18:05.9865433 UTC**. Final machine-readable evidence: `.local/atlas2/independent-audit-final.json`, `copied-save-census.json` and `audit-cleanup.json`. There is no remaining launch/permission blocker. Broad visual parity, death regression and gameplay beyond the finite tested points remain unverified.
