@@ -91,6 +91,9 @@ Json ProjectionMetrics(float x,float z,float zoom){auto uv=transform.Image(x,z),
 void Command(const std::string& c){if(!Enabled())return;if(c=="atlas2-static")mode=0;if(c=="atlas2-reference")mode=1;if(c=="atlas2-overlay")mode=2;if(c=="atlas2-floor-auto")manual=-1;if(c.rfind("atlas2-floor ",0)==0){try{int v=std::stoi(c.substr(13));if(v>=0&&v<int(grid.anchors.size()))manual=v;}catch(...){}}}
 void Draw(ImDrawList* draw,const std::string& region,int layer,ImVec2 center,ImVec2 extent,float cx,float cz,float zoom,float opacity,bool shading,float ui_scale){
     auto start=std::chrono::steady_clock::now();Collect();uploads=retirements=visible=backend_ready=0;line_candidates=line_drawn=0;
+    // A failed backend allocation stays WantCreate. Its retry consumes the same
+    // four-request budget as newly decoded tiles on the following frame.
+    for(const auto& slot:slots)if(slot.texture&&!slot.texture->WantDestroyNextFrame&&slot.texture->Status==ImTextureStatus_WantCreate)++uploads;
     if(!std::isfinite(cx)||!std::isfinite(cz)||!std::isfinite(zoom)||zoom<=0||!std::isfinite(ui_scale)||ui_scale<=0||!Load(region)||layer<0||layer>=int(views.size())){draw->AddText({center.x-180,center.y},IM_COL32(223,214,187,255),"Static area data unavailable; check local pack.");return;}
     opacity=std::clamp(opacity,0.f,1.f);const auto flags=BbMapFeatures::StaticRegionVisibility(region);const bool fog=BbMapFeatures::FogEnabled();const View& active=views[layer];const Transform& t=active.transform;const bool composite=active.composite;composite_active=composite;detail_ppu=t.ppu;
     // A composite is already ordered like V1 and excludes its active floor from context.

@@ -63,15 +63,29 @@ def main():
     repo_native=root/'native'
     names=['bbport_map.cpp','bbport_map_art.cpp','bbport_map_features.cpp','bbport_map_static.cpp']
     baseline_sha={}
-    for name in names[:-1]:
+    for name in names[:3]:
         baseline=baseline_native/'gpu/shim'/name
         original=subprocess.check_output(['git','-c','safe.directory='+str(root.parent).replace('\\','/'),'-C',str(root.parent),'show','4ee4a0e:source/native/gpu/shim/'+name])
         if original.replace(b'\r\n',b'\n')!=baseline.read_bytes().replace(b'\r\n',b'\n'):raise RuntimeError('Retained baseline source differs from selected V1')
         baseline_sha[name]=sha(baseline)
+    # The tile cache needs more descriptors than the original five art/font
+    # textures. Rebuild the owner and the allocation-failure guard together.
+    names+=['bbport_overlay.cpp','imgui_impl_vulkan.cpp']
     objects=[]
     for name in names:
         obj=a.output/(name+'.obj')
-        cmd=[str(a.toolchain/'clang++.exe'),'-std=gnu++23','-O2','-g','-DNDEBUG','-DNOMINMAX','-DWIN32_LEAN_AND_MEAN','-DIMGUI_IMPL_VULKAN_NO_PROTOTYPES','-fno-omit-frame-pointer','-Wno-deprecated-declarations','-Wno-missing-field-initializers','-include',str(repo_native/'gpu/mingw_libcxx_compat.h'),'-include',str(repo_native/'gpu/shim/bb_win_compat.h'),'-I'+str(repo_native/'gpu/third_party/imgui'),'-I'+str(repo_native/'gpu/shim'),'-c',str(repo_native/'gpu/shim'/name),'-o',str(obj)]
+        source=repo_native/('gpu/third_party/imgui/backends' if name=='imgui_impl_vulkan.cpp' else 'gpu/shim')/name
+        if name=='bbport_overlay.cpp':
+            # The pinned runtime owner also contains verified private QA hooks.
+            # Retain them exactly; patch only the descriptor-capacity contract.
+            pinned_overlay=baseline_native/'gpu/shim/bbport_overlay.cpp'
+            content=pinned_overlay.read_text();anchor='    info.DescriptorPoolSize = 16;'
+            if content.count(anchor)!=1:raise RuntimeError('Pinned overlay capacity anchor changed')
+            budget=(root/'atlas2/texture_budget.h').as_posix()
+            content='#include "'+budget+'"\n#include "'+(repo_native/'gpu/shim/bbport_map_static.h').as_posix()+'"\n'+content.replace(anchor,'    info.DescriptorPoolSize = BbMapStatic::Enabled() ? Atlas2::RendererImageDescriptors : 16;')
+            source=a.output/'pinned-overlay-capacity.cpp';source.write_text(content,newline='\n');baseline_sha[name]=sha(pinned_overlay)
+        cmd=[str(a.toolchain/'clang++.exe'),'-std=gnu++23','-O2','-g','-DNDEBUG','-DNOMINMAX','-DWIN32_LEAN_AND_MEAN','-DIMGUI_IMPL_VULKAN_NO_PROTOTYPES','-fno-omit-frame-pointer','-Wno-deprecated-declarations','-Wno-missing-field-initializers','-include',str(repo_native/'gpu/mingw_libcxx_compat.h'),'-include',str(repo_native/'gpu/shim/bb_win_compat.h'),'-I'+str(repo_native/'gpu/third_party/imgui'),'-I'+str(repo_native/'gpu/third_party/imgui/backends'),'-I'+str(repo_native/'gpu/shim'),'-I'+str(repo_native/'gpu/shadps4'),'-I'+str(a.baseline_build/'include'),'-I'+str(a.toolchain.parent/'include/vma'),'-DBB_FONT_PATH="'+str(repo_native/'gpu/third_party/fonts/DejaVuSans.ttf').replace('\\','/')+'"','-c',str(source),'-o',str(obj)]
+        if name=='bbport_overlay.cpp':cmd[1:1]=['-iquote',str(baseline_native/'gpu/shim')]
         if a.link_only:
             if not obj.is_file():raise RuntimeError('Compiled object missing')
         else:
@@ -90,7 +104,7 @@ def main():
     # A private response file also avoids Windows command-line length limits.
     rsp=a.output/'atlas2-link.rsp';rsp.write_text(subprocess.list2cmdline(args[1:]))
     with (a.output/'link.log').open('w') as log:subprocess.run([args[0],'@'+str(rsp)],cwd=a.baseline_build,env=env,stdout=log,stderr=log,check=True)
-    result=dict(schema=1,reference_runtime_sha256=sha(pinned),retained_baseline_text_sha256=text_section(pinned),experimental_runtime_sha256=sha(a.output/'bb-probe-atlas2.exe'),baseline_sources_sha256=baseline_sha,renderer_workers=0,compiler_processes=1,linker_threads=1,native_game_launched=False)
+    result=dict(schema=1,reference_runtime_sha256=sha(pinned),retained_baseline_text_sha256=text_section(pinned),experimental_runtime_sha256=sha(a.output/'bb-probe-atlas2.exe'),baseline_sources_sha256=baseline_sha,renderer_workers=0,compiler_processes=1,linker_threads=1,native_game_launched=False,renderer_image_descriptors=96,rebuilt_objects=names)
     (a.output/'build-evidence.json').write_text(json.dumps(result,indent=2))
     print('ATLAS2_NATIVE_BUILD_READY',flush=True)
 if __name__=='__main__':main()

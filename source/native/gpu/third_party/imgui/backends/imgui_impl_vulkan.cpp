@@ -786,6 +786,16 @@ void ImGui_ImplVulkan_UpdateTexture(ImTextureData* tex)
 
         // Create the Descriptor Set
         backend_tex->DescriptorSet = ImGui_ImplVulkan_AddTexture(backend_tex->ImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        if (backend_tex->DescriptorSet == VK_NULL_HANDLE)
+        {
+            // Allocation failure is not an uploaded texture. Leave WantCreate
+            // for retry, without publishing a stale descriptor or leaking images.
+            vkDestroyImageView(v->Device, backend_tex->ImageView, v->Allocator);
+            vkDestroyImage(v->Device, backend_tex->Image, v->Allocator);
+            vkFreeMemory(v->Device, backend_tex->Memory, v->Allocator);
+            IM_DELETE(backend_tex);
+            return;
+        }
 
         // Store identifiers
         tex->SetTexID((ImTextureID)backend_tex->DescriptorSet);
@@ -1102,7 +1112,7 @@ static VkDescriptorSet ImGui_ImplVulkan_CreateSamplerDS(VkSampler sampler)
     ImGui_ImplVulkan_Data* bd = ImGui_ImplVulkan_GetBackendData();
     ImGui_ImplVulkan_InitInfo* v = &bd->VulkanInitInfo;
 
-    VkDescriptorSet descriptor_set;
+    VkDescriptorSet descriptor_set = VK_NULL_HANDLE;
     VkDescriptorSetAllocateInfo alloc_info = {};
     alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     alloc_info.descriptorPool = bd->DescriptorPool ? bd->DescriptorPool : v->DescriptorPool;
@@ -1457,6 +1467,8 @@ VkDescriptorSet ImGui_ImplVulkan_AddTexture(VkImageView image_view, VkImageLayou
         alloc_info.pSetLayouts = &bd->DescriptorSetLayoutTexture;
         VkResult err = vkAllocateDescriptorSets(v->Device, &alloc_info, &descriptor_set);
         check_vk_result(err);
+        if (err != VK_SUCCESS)
+            return VK_NULL_HANDLE;
     }
 
     // Update the Descriptor Set:

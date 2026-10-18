@@ -16,12 +16,13 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include "texture_budget.h"
 
 namespace Atlas2 {
 using Json=nlohmann::json;
 namespace fs=std::filesystem;
 constexpr int Tile=256,Gutter=2,Dimension=Tile+Gutter*2;
-constexpr size_t TileBytes=Dimension*Dimension*4,CacheSlots=64;
+constexpr size_t TileBytes=Dimension*Dimension*4;
 inline std::vector<unsigned char> Read(const fs::path& p,size_t limit=64*1024*1024){
     auto size=fs::file_size(p);if(size>limit)throw std::runtime_error("asset exceeds bound");
     std::vector<unsigned char>b(size);std::ifstream f(p,std::ios::binary);f.read((char*)b.data(),b.size());
