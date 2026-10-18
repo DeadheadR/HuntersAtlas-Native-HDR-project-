@@ -624,7 +624,7 @@ void Draw() {
         if(preview_active&&selected_destination>=0&&destinations[selected_destination].area==a.id){const auto saved=location;const auto& d=destinations[selected_destination];location.x=d.x;location.y=d.y;location.z=d.z;active=AutoLayer(a);location=saved;}
         if(active>=0)render_y=a.layers[active].anchor;
         if(BbMapStatic::Enabled()) {
-            atlas2_render_state={{"frame",ImGui::GetFrameCount()},{"mode",BbMapStatic::Mode()},{"region_id",a.id},{"area",metadata.name},{"layer",active},{"preview",preview_active},{"zoom",zoom},{"pose",{{"valid",location.valid!=0},{"block",location.block},{"x",location.x},{"y",location.y},{"z",location.z},{"yaw",location.yaw}}}};
+            atlas2_render_state={{"frame",ImGui::GetFrameCount()},{"mode",BbMapStatic::Mode()},{"region_id",a.id},{"area",metadata.name},{"layer",active},{"preview",preview_active},{"zoom",zoom},{"center",{cx,cz}},{"ui_scale",scale},{"canvas_size",{canvas_size.x,canvas_size.y}},{"viewport_size",{full.x,full.y}},{"feature_settings",{{"fog",BbMapFeatures::FogEnabled()},{"items",BbMapFeatures::ItemsEnabled()},{"travel",BbMapFeatures::TravelEnabled()}}},{"pose",{{"valid",location.valid!=0},{"block",location.block},{"x",location.x},{"y",location.y},{"z",location.z},{"yaw",location.yaw}}}};
             if(current==selected&&!preview_active){atlas2_render_state["strict_layer"]=BbMapStatic::StrictLayer(a.id,location.x,location.y,location.z,location.valid!=0);if(reference)atlas2_render_state["v1_layer"]=AutoLayerV1(reference_area);}
         }
         if(!BbMapStatic::Enabled()||BbMapStatic::Mode()!=0) {

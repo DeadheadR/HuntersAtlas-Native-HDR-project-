@@ -1,0 +1,24 @@
+"""Produce source-derived comparison parameters. No native/GPU execution or images."""
+from pathlib import Path
+import argparse,hashlib,json
+
+def main():
+    p=argparse.ArgumentParser();p.add_argument('work',type=Path);a=p.parse_args();work=a.work.resolve();index=json.loads((work/'packs/atlas2-index.json').read_text())
+    rows=[]
+    for entry in index['areas']:
+        m=json.loads((work/'packs'/entry['area']/'manifest.json').read_text());assert m['ppu']==8 and m['tile_size']==256 and m['gutter']==2
+        rows.append(dict(area=entry['area'],layers=len(m['layers']),ppu=m['ppu'],levels=m['levels'],visual_review='not_run',live_comparison_count=0))
+    zoom=[]
+    for width,height in [(1280,720),(1920,1080),(2560,1440),(3840,2160)]:
+        scale=min(width/1280,height/720);default=9*scale;maximum=25*scale
+        zoom.append(dict(imgui_display_size=[width,height],assumed_framebuffer_scale=[1,1],ui_scale=scale,recenter_zoom=default,scaled_maximum_zoom=maximum,texel_ui_footprint_at_recenter=default/8,texel_ui_footprint_at_scaled_maximum=maximum/8,mouse_and_fit_raw_maximum=25,source_calculation_only=True))
+    plan=dict(schema=1,status='PREPARED_SOURCE_ONLY_NATIVE_HOLD',native_launch_performed=False,live_comparison_count=0,gameplay_fps_measured=False,speedup_factor=None,offline_timing_used_as_fps=False,areas=rows,
+        source_scale=dict(ppu=8,world_units_per_lod0_texel=.125,tile_interior_texels=256,gutter_texels=2,allocated_texture_size=[260,260],lod0_tile_world_extent=32,lod_density_formula='8 / 2**L',nominal_lod_formula='clamp(floor(log2(8/zoom)),0,levels-1)',lod_pressure_policy='Coarsen while relevant visible tile count exceeds 48, until final available LOD',lod_generation='Independent pixel-centre rasterization; no supersampling or area-filtered downsample',lod_crossfade=False),
+        zoom_examples=zoom,required_matching_fields=['render.pose','render.region_id','render.layer','render.zoom','render.center','render.ui_scale','render.canvas_size','render.viewport_size','render.feature_settings'],visual_pose_tolerance=dict(projected_horizontal_ui_units=.25,vertical_world_units=.0001,yaw_radians=.0001),
+        captures=dict(destination='Private copied-save session only',publish_images=False,attach_images_to_chat=False,upload_to_library=False,compare_full_opacity_modes=[0,1],alignment_overlay_mode=2,overlay_is_not_palette_reference=True,wait_for_backend_ready_tiles=True,zero_revealed_tiles_count_as_visual_acceptance=False,record_actual_framebuffer_dimensions_and_dpi=True),
+        cases=[dict(id='default',driver_preset='default'),dict(id='fit',driver_preset='fit'),dict(id='maximum_scaled',driver_preset='maximum_scaled'),dict(id='minimum_scaled',driver_preset='minimum_scaled'),dict(id='lod_threshold_pairs',procedure='Bracket each observed LOD change using existing zoom controls, then compare each exact observed zoom in both modes'),dict(id='tile_boundary_pan',procedure='Use private logical right-stick input while map captures input; stop input and confirm unchanged player pose before paired captures'),dict(id='mouse_limit',procedure='Record actual mouse-wheel clamp separately from scaled controller/keyboard clamp'),dict(id='layer_selection',procedure='Manual override off; compare independent strict V1 floor, static raw lookup and selected floor history at confirmed eligible arrivals')],
+        appearance_checks=['floor edge and narrow path coverage','floor material and height colors','active wall/outline width at both zoom extremes','context opacity and active-floor context duplication','omitted enclosed-void fills and hatching','icon contrast and visibility at matched floor','fog boundary and unknown-flag behavior','tile gutter seams and pan/cold-cache gaps','LOD popping and subpixel line loss','elevation toggle versus baked shading and legend'],
+        interpretation=dict(current_visual_identity=False,raw_geometry_equality_is_not_pixel_identity=True,matching_view_is_not_visual_acceptance=True,finite_probes_are_not_all_coordinates=True,offline_centroid_test='142728 representative LOD0 centroids; 18 required a one-pixel neighbourhood, no missing centroid. This does not verify all LODs, outlines or wall readability.',floor_probe_test='21384 stateless strict probes across 602 layers; history/hysteresis and native gameplay remain separate.'),
+        cpu_validation=dict(matching_view_unit_tests=6,new_snapshot_native_game_validation=False),next_run='New explicit parent reservation, fresh process/GPU check and acquisition of the documented shared native lease; no launch during current hold')
+    out=work/'visual-comparison-plan.json';out.write_text(json.dumps(plan,indent=2));print('SOURCE_VISUAL_PLAN_READY areas='+str(len(rows))+' layers='+str(sum(r['layers'] for r in rows))+' live=0 fps=unmeasured')
+if __name__=='__main__':main()

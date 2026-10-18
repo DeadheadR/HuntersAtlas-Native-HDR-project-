@@ -49,6 +49,9 @@ height shading uses each floor's local range; outlines/walls have fixed world wi
 The elevation-shading toggle currently affects the V1 reference only. These are
 documented prototype deviations, not claims of pixel-identical visual conformance.
 Navigation readability and native texture seams still require live visual review.
+See [the source-only visual parity checklist](VISUAL-PARITY.md) for exact retained,
+omitted and changed features, stroke/color formulas, zoom scaling and the prepared
+matching-view comparison protocol. No gameplay speedup factor has been measured.
 
 ## Build and test
 
