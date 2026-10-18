@@ -1,6 +1,8 @@
 """Refresh only the private experimental install after a local rebuild."""
 from pathlib import Path
-import argparse,hashlib,json,shutil
+import argparse,hashlib,json,shutil,sys
+sys.path.insert(0,str(Path(__file__).resolve().parent))
+from private_runtime import isolate_overlay
 def sha(p):return hashlib.sha256(Path(p).read_bytes()).hexdigest()
 def write(p,v):p.write_text(json.dumps(v,indent=2),encoding='utf-8')
 def main():
@@ -18,6 +20,7 @@ def main():
     for name in ['import-receipt.json','port-data-import-receipt.json']:write(profile/name,dict(schema=1,source_sha256=None,qa_fixture=True))
     shutil.copy2(work/'native-build/bb-probe-atlas2.exe',root/'bin/bb-probe.exe')
     native=json.loads((root/'native-build.json').read_text());native['runtime_sha256']=sha(root/'bin/bb-probe.exe');write(root/'native-build.json',native)
+    isolate_overlay(root)
     m=json.loads((root/'manifest.json').read_text());m['files']={name:sha(root/name) for name in m['files']};write(root/'manifest.json',m)
     print('ATLAS2_PRIVATE_INSTALL_REFRESHED')
 if __name__=='__main__':main()

@@ -81,20 +81,45 @@ The private installation/update/uninstallation scripts are inert; use its dedica
 No native game is launched by generation, build or offline tests. Obtain a reserved
 GPU window from the parent task before invoking `launch_session.py --reserved-window
 <coordination-label> --label <generic-session-id>` with the test install's CPython.
+`hold_native_lease.ps1` acquires `Local\Piranesi.Validation.SingleWorker` without
+waiting, checks game/Blender processes and current GPU status, then maintains a
+heartbeat. The launcher verifies both that heartbeat and the held OS mutex before
+each child launch. Release using the per-reservation request path in the lease
+record; the holder waits for game processes to exit before releasing. No process
+is automatically terminated by this lease helper.
 It reuses the existing local opt-in test driver without modifying that original file
-and creates a fresh copied-save session. Run only one game process at a time.
+and pins a local snapshot of it for both parent/child startup. It creates a fresh
+copied-save session. Run only one game process at a time. `drive_game.py` sends one
+named logical input or requests normal window closure for the verified private PID.
+
+The private cross-volume preparation overlay explicitly uses the runtime's existing
+`beside_game=False` implementation, keeping generated game views inside this
+worktree. The default runner otherwise creates `mod-game-*` beside the game on D:;
+that location is outside this task's write boundary. This one local script change
+is rehashed in the private dependency/manifest closure. The original installed
+runner and game remain untouched.
 
 The command file accepts `atlas2-static`, `atlas2-reference`, `atlas2-overlay`,
 `atlas2-floor N`, and `atlas2-floor-auto`. Both render paths share the same pose,
 canvas, map transform and selected floor. The extra sanitized `.atlas2.json` trace
 contains pose, floor comparison, transform roundtrip error, cache counts and submission
 time. Numeric roundtrip error is not a measured visual-alignment error.
+Schema-2 telemetry is atomically replaced and carries process ID, UTC time, sequence,
+command acknowledgement, actual render-frame pose, backend-ready tile count and
+native travel status. Correlated request IDs are executed once; stale traces and
+unconfirmed commands cannot become successful samples.
 
 `atlas2-travel N` is gated by experimental mode and `BB_ATLAS_QA=1`. It accepts only
 currently available discovered destinations and calls the existing guarded native
 travel adapter. `compare_session.py` attaches to an existing copied-save session,
 requests only those destinations, checks region/XYZ after travel, then compares V1
 and V2 at a stable matched pose. Failed/inconclusive arrivals remain explicit.
+The default batch is two destinations and a bounded time budget. A known native
+guard rejection is unavailable coverage; uncertain accepted requests stop the batch.
+Floor differences at a matched pose are mismatches, including hysteresis differences.
+Zero revealed tiles never count as visual acceptance. `coverage_manifest.py`
+records all 602 planned layers with unverified live gaps until actual observations
+exist; offline probes never become gameplay passes.
 Offline geometry anchors are **not** native teleport targets.
 
 Live testing remains pending until a reserved window is available: arrival/floor

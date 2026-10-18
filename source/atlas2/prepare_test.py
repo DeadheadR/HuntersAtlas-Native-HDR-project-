@@ -1,6 +1,8 @@
 """Prepare a private Atlas2 install and copied-save profile without launching a game."""
 from pathlib import Path
-import argparse,hashlib,json,os,runpy,shutil,struct
+import argparse,hashlib,json,os,runpy,shutil,struct,sys
+sys.path.insert(0,str(Path(__file__).resolve().parent))
+from private_runtime import isolate_overlay
 
 PIN='887f5baf7e149ea7604e4e037fd5eef43a0ad483a8dcb649a6122636d906c557'
 def sha(p):
@@ -74,6 +76,7 @@ def main():
         if s.count(anchor)!=1:raise RuntimeError('Environment injection anchor mismatch')
         path.write_text(s.replace(anchor,env_text+anchor),encoding='utf-8',newline='\n')
     native=json.loads((dest/'native-build.json').read_text());native.update(runtime_sha256=sha(dest/'bin/bb-probe.exe'),experimental_atlas2=True,reference_runtime_sha256=PIN);write(dest/'native-build.json',native)
+    isolate_overlay(dest)
     manifest=json.loads((dest/'manifest.json').read_text());manifest['asset_pack']['sha256']=sha(dest/'assets.atlaslite');manifest['experimental_atlas2']=True
     for name in list(manifest['files']):manifest['files'][name]=sha(dest/name)
     manifest['files']['atlas2-local.json']=sha(dest/'atlas2-local.json');write(dest/'manifest.json',manifest)
