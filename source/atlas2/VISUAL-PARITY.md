@@ -1,4 +1,9 @@
-# Source-only visual parity audit
+# Historical source-only visual parity audit
+
+Current status is in [PARITY-CHECKPOINT.md](PARITY-CHECKPOINT.md). The 16-ppu
+integration builds and has new native captures, but visual acceptance failed due
+to repeated raster content in the final swapchain. The checklist below records
+the earlier baseline; its statements about absent live measurements are historical.
 
 Atlas2 is currently **not visually identical to V1**. There is no measured in-game
 speedup, completed live comparison, or gameplay FPS result. This checklist is based
