@@ -1,5 +1,8 @@
 # Local parity checkpoint — batch05
 
+Historical failed result. The descriptor-capacity cause and subsequent synthetic
+and native repair evidence are in [TEXTURE-LIFECYCLE.md](TEXTURE-LIFECYCLE.md).
+
 Buildable integration commit: `9088ab4`, separate from preserved prototype
 `d553827`. No remote push or release. The pinned installation and original saves
 remain protected. Renderer preparation workers remain zero.

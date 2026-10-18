@@ -10,7 +10,13 @@ from capture_ui import capture_ui
 from compare_private_frames import load,metric
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument('--session',type=Path,required=True);p.add_argument('--reserved-window',required=True);p.add_argument('--seconds',type=int,default=20);a=p.parse_args();w=Path(__file__).resolve().parents[2]/'.local/atlas2';s=a.session.resolve();s.relative_to(w.resolve());verify_lease(w,a.reserved_window);c=Channel(s/'map-qa/trace.json.atlas2.json',w/'Atlas2-test/bin/bb-probe.exe',max_age=30);state=c.read();pose=state['pose'];stock=read_json(w/'audit-qa/runs/stock-trace04/stock-status.json');expected_pose=dict(valid=stock['valid'],block=stock['block'],**{k:stock[k] for k in ('x','y','z','yaw')})
+    p=argparse.ArgumentParser();p.add_argument('--session',type=Path,required=True);p.add_argument('--reserved-window',required=True);p.add_argument('--seconds',type=int,default=20);p.add_argument('--require-raster-check',action='store_true');a=p.parse_args();w=Path(__file__).resolve().parents[2]/'.local/atlas2';s=a.session.resolve();s.relative_to(w.resolve());verify_lease(w,a.reserved_window)
+    if a.require_raster_check:
+        accepted=read_json(s/'raster-correctness-verification.json');assert accepted['texture_binding_accepted'] and Path(accepted['session'])==s
+        for comparison in accepted['comparisons']:
+            for image in comparison['images']:
+                path=Path(image['path']).resolve();path.relative_to(s);assert hashlib.sha256(path.read_bytes()).hexdigest()==image['sha256']
+    c=Channel(s/'map-qa/trace.json.atlas2.json',w/'Atlas2-test/bin/bb-probe.exe',max_age=30);state=c.read();pose=state['pose'];stock=read_json(w/'audit-qa/runs/stock-trace04/stock-status.json');expected_pose=dict(valid=stock['valid'],block=stock['block'],**{k:stock[k] for k in ('x','y','z','yaw')})
     if not matched_pose(pose,expected_pose) or not state['menu_top']:raise ProtocolError('Matched stock pose under native pause menu required')
     c.command('open');c.command('recenter');issued=c.command('atlas2-reference');c.rendered(1,issued['sequence']);settle(c,3,pose);image=capture_ui(s)[0];stock_image=read_json(w/'audit-qa/runs/stock-clean04/latest-stock-ui-capture.json')['images'][0];aa,width,height,_=load(image['path']);bb,ww,hh,_=load(stock_image['path']);assert (width,height)==(ww,hh);parity=metric(aa,bb,width,height,(345,171,1597.5,978),2);atomic_json(s/'reference-stock-canvas-parity.json',dict(schema=1,map_canvas=parity,images_private=True,pose_matched=True,original_stock_binary_sha256='887f5baf7e149ea7604e4e037fd5eef43a0ad483a8dcb649a6122636d906c557'))
     if parity['rgb_mae_0_255']>1:raise ProtocolError('Reference differs from exact stock map canvas; investigate before timing acceptance')

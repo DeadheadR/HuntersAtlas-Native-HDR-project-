@@ -1,8 +1,9 @@
 # Historical source-only visual parity audit
 
-Current status is in [PARITY-CHECKPOINT.md](PARITY-CHECKPOINT.md). The 16-ppu
-integration builds and has new native captures, but visual acceptance failed due
-to repeated raster content in the final swapchain. The checklist below records
+Current status is in [TEXTURE-LIFECYCLE.md](TEXTURE-LIFECYCLE.md). The 16-ppu
+integration's descriptor-capacity defect has synthetic and native repair evidence.
+Four sampled same-view raster comparisons pass operational checks; full visual
+identity and navigation readability are unaccepted. The checklist below records
 the earlier baseline; its statements about absent live measurements are historical.
 
 Atlas2 is currently **not visually identical to V1**. There is no measured in-game
