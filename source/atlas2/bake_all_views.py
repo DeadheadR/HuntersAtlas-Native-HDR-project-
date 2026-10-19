@@ -16,6 +16,15 @@ def atomic(path,value):
    if not isinstance(error,PermissionError) and getattr(error,'winerror',None) not in [5,32,33] or time.monotonic()>=deadline:raise
    time.sleep(.05)
 def size(root):return sum(p.stat().st_size for p in root.rglob('*') if p.is_file())
+def generation_window(root,identity,max_seconds,max_gib):
+ path=Path(root)/'generation-window.json';now=time.time();mono=time.monotonic()
+ if path.exists():window=json.loads(shared_read(path))
+ else:
+  window=dict(schema=1,generator_identity=identity,started_epoch=now,deadline_epoch=now+max_seconds,storage_budget_bytes=int(max_gib*GIB),free_space_reserve_bytes=16*GIB);atomic(path,window)
+ if window['generator_identity']!=identity or window['storage_budget_bytes']!=int(max_gib*GIB) or window['free_space_reserve_bytes']!=16*GIB:raise RuntimeError('Persisted generation identity or storage limits differ')
+ began=float(window['started_epoch']);end=float(window['deadline_epoch'])
+ if not 0<began<=now<end<float('inf'):raise RuntimeError('Original generation time bound reached or invalid')
+ return mono-(now-began),mono+min(max_seconds,end-now)
 def main():
  p=argparse.ArgumentParser();p.add_argument('--baseline',type=Path,required=True);p.add_argument('--assets',type=Path,required=True);p.add_argument('--output',type=Path,required=True);p.add_argument('--baker',type=Path,required=True);p.add_argument('--runtime-directory',type=Path,required=True);p.add_argument('--resume',action='store_true');p.add_argument('--areas',nargs='*');p.add_argument('--max-gib',type=float,default=16);p.add_argument('--max-seconds',type=int,default=21600);a=p.parse_args();baseline=a.baseline.resolve();out=a.output.resolve();assets=a.assets.resolve()
  if out.is_relative_to(baseline) or baseline.is_relative_to(out):raise RuntimeError('Independent output required')
@@ -24,7 +33,7 @@ def main():
  generation_lease=acquire(out)
  env=dict(os.environ,PATH=str(a.runtime_directory.resolve())+os.pathsep+os.environ.get('PATH',''))
  if os.name=='nt':ctypes.windll.kernel32.SetErrorMode(0x0001|0x0002|0x8000)
- identity=hashlib.sha256(b''.join(Path(__file__).with_name(f).read_bytes() for f in ['bake_parity.cpp','parity_style.h','core.h','texture_budget.h'])).hexdigest();index=json.loads(shared_read(out/'atlas2-index.json'));started=time.monotonic();deadline=started+a.max_seconds;measurements=[];last_total=-1
+ identity=hashlib.sha256(b''.join(Path(__file__).with_name(f).read_bytes() for f in ['bake_parity.cpp','parity_style.h','core.h','texture_budget.h'])).hexdigest();index=json.loads(shared_read(out/'atlas2-index.json'));started,deadline=generation_window(out,identity,a.max_seconds,a.max_gib);measurements=[];last_total=-1
  def census():
   rows=[]
   for e in index['areas']:

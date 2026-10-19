@@ -99,3 +99,9 @@ checkpoints. Four new IO tests pass, including replacement while an old reader
 remains open; all 26 Atlas2 Python tests pass. The four frozen raster-generator
 sources and their content identity are unchanged. Recovery must wait until that
 existing baker exits and retain the original six-hour deadline and storage limits.
+
+The original controller's verified creation time is preserved in
+`generation-window.json`. Resume uses that same absolute deadline and the same
+16 GiB output/reserve limits; it cannot silently reset the time window or raise
+the storage cap. Three additional tests cover those bounds; all 29 Python tests
+pass. This changes orchestration only, not raster output or generator identity.

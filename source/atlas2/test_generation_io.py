@@ -2,7 +2,7 @@
 from pathlib import Path
 import json,os,tempfile,unittest
 from unittest.mock import patch
-from bake_all_views import atomic,replace_file
+from bake_all_views import atomic,replace_file,generation_window
 from pack_format import shared_open,shared_read
 
 class GenerationIOTests(unittest.TestCase):
@@ -32,5 +32,17 @@ class GenerationIOTests(unittest.TestCase):
   with tempfile.TemporaryDirectory() as folder:
    with patch('bake_all_views.replace_file',side_effect=FileNotFoundError('Simulated missing file')) as replace,self.assertRaises(FileNotFoundError):atomic(Path(folder)/'state.json',{})
    self.assertEqual(replace.call_count,1)
+ def test_resume_cannot_extend_the_original_time_window(self):
+  with tempfile.TemporaryDirectory() as folder:
+   with patch('bake_all_views.time.time',return_value=1000),patch('bake_all_views.time.monotonic',return_value=50):self.assertEqual(generation_window(folder,'identity',30,16),(50,80))
+   with patch('bake_all_views.time.time',return_value=1010),patch('bake_all_views.time.monotonic',return_value=60):self.assertEqual(generation_window(folder,'identity',300,16),(50,80))
+ def test_expired_original_window_blocks_resume(self):
+  with tempfile.TemporaryDirectory() as folder:
+   with patch('bake_all_views.time.time',return_value=1000):generation_window(folder,'identity',30,16)
+   with patch('bake_all_views.time.time',return_value=1031),self.assertRaises(RuntimeError):generation_window(folder,'identity',300,16)
+ def test_resume_cannot_silently_increase_storage_budget(self):
+  with tempfile.TemporaryDirectory() as folder:
+   generation_window(folder,'identity',30,16)
+   with self.assertRaises(RuntimeError):generation_window(folder,'identity',30,32)
 
 if __name__=='__main__':unittest.main()
