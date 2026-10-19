@@ -11,9 +11,9 @@ def main():
   path=path.resolve();path.relative_to(root)
   if path in checked:require(checked[path]==expected,"Conflicting identity for one tile path")
   if path in cache:cache.move_to_end(path);return cache[path]
-  b=path.read_bytes()
+  require(path.stat().st_size<=260*260*4+1024,'Encoded tile runtime bound');b=path.read_bytes()
   if path not in checked:require(hashlib.sha256(b).hexdigest()==expected,'Tile content identity');require(b[:12]==b'A2T1'+struct.pack('<II',260,260),'Tile dimensions');checked[path]=expected
-  d=zlib.decompress(b[12:]);require(len(d)==260*260*4,'Decoded tile length');cache[path]=d
+  decoder=zlib.decompressobj();d=decoder.decompress(b[12:],260*260*4+1);require(len(d)==260*260*4 and decoder.eof and not decoder.unused_data and not decoder.unconsumed_tail,'Decoded tile length/stream consumption');cache[path]=d
   if len(cache)>64:cache.popitem(last=False)
   return d
  for entry in index['areas']:
