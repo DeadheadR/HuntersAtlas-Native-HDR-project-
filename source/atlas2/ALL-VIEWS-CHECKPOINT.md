@@ -105,3 +105,12 @@ The original controller's verified creation time is preserved in
 16 GiB output/reserve limits; it cannot silently reset the time window or raise
 the storage cap. Three additional tests cover those bounds; all 29 Python tests
 pass. This changes orchestration only, not raster output or generator identity.
+
+Additional deterministic grid tests cover 12,309 strict V1-rule comparisons,
+walkable triangle-edge boundaries in all 602 layers, height-varying triangles in
+575 layers, distinct-height overlaps in 592 layers, and 207 two-layer overlap
+jitter/transition cases with the normal hysteresis margin. The report pins the
+baseline index and every grid hash. Overlap search uses at most 16 centroids per
+layer: ten layers had no overlap found in that sample, which does not establish
+absence. Height variation is a geometric category, not a semantic staircase label.
+These remain offline checks and do not increase live teleport coverage.
