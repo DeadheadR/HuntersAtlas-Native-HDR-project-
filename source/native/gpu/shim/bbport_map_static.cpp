@@ -9,6 +9,7 @@
 #include <tuple>
 #include <set>
 #include <limits>
+#include <future>
 
 namespace BbMapStatic { namespace {
 using namespace Atlas2;
@@ -27,8 +28,8 @@ View context;std::vector<View> views;int primary=-1,levels=1,previous=-1,manual=
 float last_x=0,last_z=0;bool prior_valid=false;uint64_t hits=0,misses=0,failures=0,evicted_total=0,created_total=0,collected_total=0;int uploads=0,retirements=0,visible=0,backend_ready=0,last_lod=0;double draw_ms=0;int unique=2000000;
 fs::path SafePath(const fs::path& base,const std::string& file){if(file.empty()||file.find("..")!=std::string::npos||file.find(':')!=std::string::npos||file.find('\\')!=std::string::npos||fs::path(file).is_absolute())throw std::runtime_error("pack path");return base/file;}
 void CheckRequirements(const std::vector<int>& values){if(values.size()>256)throw std::runtime_error("reveal bound");for(int r:values)if(r< -1||r>255)throw std::runtime_error("reveal index");}
-View ParseView(const Json& j,const fs::path& base){
-    View v;v.transform=transform;v.levels=levels;v.composite=j.value("kind",std::string("legacy"))=="composite";
+View ParseView(const Json& j,const fs::path& base,const Transform& base_transform,int base_levels){
+    View v;v.transform=base_transform;v.levels=base_levels;v.composite=j.value("kind",std::string("legacy"))=="composite";
     if(j.contains("ppu")){v.transform.ppu=j.at("ppu");v.transform.width=j.at("width");v.transform.height=j.at("height");v.levels=j.at("levels");v.transform.Validate();if(v.levels<1||v.levels>16)throw std::runtime_error("view levels");auto matrix=j.at("world_to_image").get<std::array<double,6>>();std::array<double,6> expected={v.transform.ppu,0,-v.transform.x0*v.transform.ppu,0,-v.transform.ppu,v.transform.z1*v.transform.ppu};for(int i=0;i<6;++i)if(!std::isfinite(matrix[i])||std::abs(matrix[i]-expected[i])>1e-6)throw std::runtime_error("view transform mismatch");}
     if(j.contains("view_file")){v.external=SafePath(base,j.at("view_file"));v.external_hash=j.at("view_sha256");v.external_layer=j.at("layer_index");if(v.external_hash.size()!=64)throw std::runtime_error("view identity");v.composite=true;v.prepared=false;return v;}
     std::vector<std::shared_ptr<const TileMap>> sets(j.value("tile_sets",Json::array()).size());if(sets.size()>128)throw std::runtime_error("tile set bound");
@@ -46,7 +47,47 @@ View ParseView(const Json& j,const fs::path& base){
     if(j.contains("line_overlay")){v.lines=SafePath(base,j.at("line_overlay").at("file"));v.line_hash=j.at("line_overlay").at("sha256");if(v.line_hash.size()!=64)throw std::runtime_error("line identity");}
     return v;
 }
-bool PrepareView(int layer){auto& v=views.at(layer);if(v.prepared)return true;if(v.rejected)return false;try{auto bytes=Read(v.external,16*1024*1024);if(Hash(bytes)!=v.external_hash)throw std::runtime_error("view integrity");auto j=Json::parse(bytes);if(j.contains("view_file")||j.at("layer_index")!=layer||v.external_layer!=layer)throw std::runtime_error("view layer");auto prepared=ParseView(j,area_root);if(!prepared.composite||prepared.transform.ppu!=v.transform.ppu||prepared.transform.width!=v.transform.width||prepared.transform.height!=v.transform.height||prepared.levels!=v.levels)throw std::runtime_error("view header transform");if(detailed_layer>=0&&detailed_layer!=layer){auto& old=views[detailed_layer];old.groups.clear();old.lines.clear();old.prepared=false;}prepared.external=v.external;prepared.external_hash=v.external_hash;prepared.external_layer=layer;v=std::move(prepared);detailed_layer=layer;return true;}catch(...){v.rejected=true;error="Static view data unavailable or failed integrity check";++failures;return false;}}
+// The optional loader owns only local immutable file data. ImGui, game flags,
+// selection history and GPU texture ownership remain on the caller thread.
+struct AreaData {fs::path root,area_root;Transform transform;Grid grid;View context;std::vector<View> views;int primary=-1,levels=1;};
+struct PreparedView {View view;LineCache lines;};
+std::string area_target;int view_target=-1;bool area_ready=false;
+double area_worker_ms=0,view_worker_ms=0;uint64_t loader_requests=0,loader_stale=0;
+struct TimedArea {AreaData data;double ms=0;};
+// Timing is returned with each result, never written by the worker to shared state.
+std::future<TimedArea> timed_area_job;
+bool AsyncLoading(){const char* e=std::getenv("BB_ATLAS2_ASYNC_LOAD");return e&&std::string(e)=="1";}
+LineCache ReadLines(const View& view,int layer){
+    LineCache out;out.layer=layer;if(view.lines.empty())return out;
+    auto bytes=Read(view.lines,8*1024*1024);if(Hash(bytes)!=view.line_hash)throw std::runtime_error("line hash");auto j=Json::parse(bytes);
+    if(j.at("schema")!=1||j.at("cell")!=32||j.at("lines").size()>LineSegmentLimit||j.at("cells").size()>16384)throw std::runtime_error("line bounds");
+    for(const auto& l:j.at("lines")){Line v{l.at(1).get<std::array<float,4>>(),l.at(2).get<std::vector<int>>(),l.at(0)};if(v.kind<0||v.kind>1)throw std::runtime_error("line kind");for(float f:v.v)if(!std::isfinite(f)||std::abs(f)>1e6)throw std::runtime_error("line coordinate");CheckRequirements(v.requirements);out.lines.push_back(std::move(v));}
+    size_t refs=0;for(const auto& cell:j.at("cells")){int x=cell.at(0),z=cell.at(1);if(std::abs(double(x))>31250||std::abs(double(z))>31250)throw std::runtime_error("line cell");auto ids=cell.at(2).get<std::vector<int>>();refs+=ids.size();if(refs>1000000)throw std::runtime_error("line reference bound");for(int id:ids)if(id<0||id>=int(out.lines.size()))throw std::runtime_error("line index");if(!out.cells.emplace(std::pair{x,z},std::move(ids)).second)throw std::runtime_error("duplicate line cell");}
+    out.valid=true;return out;
+}
+PreparedView ReadView(View header,fs::path base,int layer){
+    auto bytes=Read(header.external,16*1024*1024);if(Hash(bytes)!=header.external_hash)throw std::runtime_error("view integrity");auto j=Json::parse(bytes);if(j.contains("view_file")||j.at("layer_index")!=layer||header.external_layer!=layer)throw std::runtime_error("view layer");auto v=ParseView(j,base,header.transform,header.levels);if(!v.composite||v.transform.ppu!=header.transform.ppu||v.transform.width!=header.transform.width||v.transform.height!=header.transform.height||v.levels!=header.levels)throw std::runtime_error("view header transform");v.external=header.external;v.external_hash=header.external_hash;v.external_layer=layer;auto lines=ReadLines(v,layer);return {std::move(v),std::move(lines)};
+}
+struct TimedView {PreparedView data;double ms=0;};
+std::future<TimedView> timed_view_job;
+bool JobBusy(){return timed_area_job.valid()||timed_view_job.valid();}
+template<class T> bool Ready(std::future<T>& job){return job.valid()&&job.wait_for(std::chrono::seconds(0))==std::future_status::ready;}
+void ClearDetail(){if(detailed_layer>=0&&detailed_layer<int(views.size())){auto& old=views[detailed_layer];old.groups.clear();old.lines.clear();old.prepared=false;}detailed_layer=-1;line_cache={};}
+bool PrepareView(int layer){
+    auto& v=views.at(layer);if(v.prepared)return true;if(v.rejected)return false;
+    if(timed_view_job.valid()){
+        if(!Ready(timed_view_job))return false;
+        try{auto prepared=timed_view_job.get();view_worker_ms=prepared.ms;if(view_target==layer){v=std::move(prepared.data.view);line_cache=std::move(prepared.data.lines);detailed_layer=layer;return true;}++loader_stale;}
+        catch(...){if(view_target>=0&&view_target<int(views.size()))views[view_target].rejected=true;error="Static view data unavailable or failed integrity check";++failures;}
+        view_target=-1;if(v.rejected)return false;
+    }
+    if(JobBusy())return false;
+    try{ClearDetail();if(AsyncLoading()){
+        auto header=v;auto base=area_root;view_target=layer;++loader_requests;
+        timed_view_job=std::async(std::launch::async,[header=std::move(header),base,layer](){auto t=std::chrono::steady_clock::now();auto data=ReadView(header,base,layer);return TimedView{std::move(data),std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-t).count()};});return false;
+    }auto prepared=ReadView(v,area_root,layer);v=std::move(prepared.view);line_cache=std::move(prepared.lines);detailed_layer=layer;return true;}
+    catch(...){v.rejected=true;error="Static view data unavailable or failed integrity check";++failures;return false;}
+}
 void Collect(){for(auto& s:slots)if(s.texture&&s.texture->WantDestroyNextFrame&&s.texture->Status==ImTextureStatus_Destroyed){ImGui::UnregisterUserTexture(s.texture.get());s.texture.reset();s.key.clear();++collected_total;}}
 ImTextureData* Texture(const Record& r){const auto key=r.path.string();if(std::find(rejected_tiles.begin(),rejected_tiles.end(),key)!=rejected_tiles.end())return nullptr;int frame=ImGui::GetFrameCount();for(auto& s:slots)if(s.texture&&!s.texture->WantDestroyNextFrame&&s.key==key){s.frame=frame;++hits;return s.texture.get();}++misses;
     Slot* free=nullptr;for(auto& s:slots)if(!s.texture){free=&s;break;}
@@ -83,11 +124,33 @@ void Lines(ImDrawList* draw,const View& view,int layer,ImVec2 center,ImVec2 exte
 }
 }
 bool Enabled(){static bool enabled=[](){const char* v=std::getenv("BB_ATLAS2_ENABLED");return v&&std::string(v)=="1";}();return enabled;}
-bool Load(const std::string& region){if(!Enabled())return false;if(loaded==region)return error.empty()||!views.empty();loaded=region;error.clear();grid={};context={};views.clear();prior_valid=false;previous=-1;manual=-1;primary=-1;detailed_layer=-1;line_cache={};line_candidates=line_drawn=0;
-    try{const char* dir=std::getenv("BB_ATLAS2_DIR"),*expected=std::getenv("BB_ATLAS2_INDEX_SHA256");if(!dir||!expected)throw std::runtime_error("Atlas2 pack configuration missing");root=fs::path(dir);auto bytes=Read(root/"atlas2-index.json",1024*1024);if(Hash(bytes)!=expected)throw std::runtime_error("Atlas2 index identity mismatch");auto index=Json::parse(bytes);if(index.at("schema")!=1||index.at("areas").size()>16)throw std::runtime_error("Atlas2 index schema");Json entry;for(const auto& r:index.at("areas"))if(r.at("region_id")==region)entry=r;if(entry.is_null())throw std::runtime_error("Atlas2 area pack unavailable");std::string label=entry.at("area");if(label.size()!=6||label.rfind("Area",0)!=0||label.find_first_not_of("0123456789",4)!=std::string::npos)throw std::runtime_error("Atlas2 area identity");area_root=root/label;
+AreaData ReadArea(const std::string& region){AreaData out;auto& root=out.root;auto& area_root=out.area_root;auto& transform=out.transform;auto& grid=out.grid;auto& context=out.context;auto& views=out.views;auto& primary=out.primary;auto& levels=out.levels;
+    const char* dir=std::getenv("BB_ATLAS2_DIR"),*expected=std::getenv("BB_ATLAS2_INDEX_SHA256");if(!dir||!expected)throw std::runtime_error("Atlas2 pack configuration missing");root=fs::path(dir);auto bytes=Read(root/"atlas2-index.json",1024*1024);if(Hash(bytes)!=expected)throw std::runtime_error("Atlas2 index identity mismatch");auto index=Json::parse(bytes);if(index.at("schema")!=1||index.at("areas").size()>16)throw std::runtime_error("Atlas2 index schema");Json entry;for(const auto& r:index.at("areas"))if(r.at("region_id")==region)entry=r;if(entry.is_null())throw std::runtime_error("Atlas2 area pack unavailable");std::string label=entry.at("area");if(label.size()!=6||label.rfind("Area",0)!=0||label.find_first_not_of("0123456789",4)!=std::string::npos)throw std::runtime_error("Atlas2 area identity");area_root=root/label;
         bytes=Read(area_root/"manifest.json",32*1024*1024);if(Hash(bytes)!=entry.at("manifest_sha256").get<std::string>())throw std::runtime_error("Atlas2 manifest identity mismatch");auto m=Json::parse(bytes);const int schema=m.at("schema");if((schema!=1&&schema!=2&&schema!=3)||m.at("region_id")!=region||m.at("vertical_axis")!="Y"||m.at("tile_size")!=Tile||m.at("gutter")!=Gutter)throw std::runtime_error("Atlas2 format mismatch");auto b=m.at("bounds").get<std::array<double,4>>();transform={b[0],b[3],m.at("ppu"),m.at("width"),m.at("height")};transform.Validate();levels=m.at("levels");if(levels<1||levels>16||m.at("views").size()>128)throw std::runtime_error("Atlas2 layer bounds");
-        bytes=Read(area_root/"grid.json");if(Hash(bytes)!=m.at("grid_sha256").get<std::string>())throw std::runtime_error("Atlas2 grid integrity mismatch");grid.FromJson(Json::parse(bytes));primary=m.at("primary");context=ParseView(m.at("context"),schema==1?area_root/"context":area_root);int i=0;for(const auto& v:m.at("views")){views.push_back(ParseView(v,schema==1?area_root/("F"+std::to_string(i)):area_root));if(!views.back().external.empty()&&views.back().external_layer!=i)throw std::runtime_error("view index");++i;}if(grid.anchors.size()!=views.size()||primary<0||primary>=int(views.size()))throw std::runtime_error("Atlas2 layer identity");return true;
-    }catch(...){error="Static area data unavailable or failed integrity check";grid={};context={};views.clear();return false;}}
+        bytes=Read(area_root/"grid.json");if(Hash(bytes)!=m.at("grid_sha256").get<std::string>())throw std::runtime_error("Atlas2 grid integrity mismatch");grid.FromJson(Json::parse(bytes));primary=m.at("primary");context=ParseView(m.at("context"),schema==1?area_root/"context":area_root,transform,levels);int i=0;for(const auto& v:m.at("views")){views.push_back(ParseView(v,schema==1?area_root/("F"+std::to_string(i)):area_root,transform,levels));if(!views.back().external.empty()&&views.back().external_layer!=i)throw std::runtime_error("view index");++i;}if(grid.anchors.size()!=views.size()||primary<0||primary>=int(views.size()))throw std::runtime_error("Atlas2 layer identity");return out;
+}
+void AdoptArea(AreaData data){root=std::move(data.root);area_root=std::move(data.area_root);transform=data.transform;grid=std::move(data.grid);context=std::move(data.context);views=std::move(data.views);primary=data.primary;levels=data.levels;area_ready=true;}
+bool Load(const std::string& region){
+    if(!Enabled())return false;
+    if(loaded==region&&area_ready)return true;
+    if(timed_area_job.valid()){
+        if(!Ready(timed_area_job))return false;
+        try{auto ready=timed_area_job.get();area_worker_ms=ready.ms;if(area_target==region){AdoptArea(std::move(ready.data));return true;}++loader_stale;}
+        catch(...){error="Static area data unavailable or failed integrity check";++failures;if(area_target==region)return false;}
+    }
+    if(timed_view_job.valid()){
+        if(!Ready(timed_view_job))return false;
+        try{timed_view_job.get();++loader_stale;}catch(...){++failures;}
+        view_target=-1;
+    }
+    if(loaded==region)return false; // A rejected area is not reread every frame.
+    loaded=region;area_ready=false;error.clear();prior_valid=false;previous=-1;manual=-1;primary=-1;detailed_layer=-1;line_cache={};line_candidates=line_drawn=0;
+    try{if(AsyncLoading()){
+        area_target=region;++loader_requests;
+        timed_area_job=std::async(std::launch::async,[region,old_grid=std::move(grid),old_context=std::move(context),old_views=std::move(views)]()mutable{old_grid={};old_context={};old_views.clear();auto t=std::chrono::steady_clock::now();auto data=ReadArea(region);return TimedArea{std::move(data),std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-t).count()};});return false;
+    }grid={};context={};views.clear();AdoptArea(ReadArea(region));return true;}
+    catch(...){error="Static area data unavailable or failed integrity check";grid={};context={};views.clear();return false;}
+}
 int Select(const std::string& region,float x,float y,float z,bool valid,bool continuity){if(!valid||!Load(region)){prior_valid=false;previous=-1;return -1;}bool keep=continuity&&prior_valid&&std::hypot(x-last_x,z-last_z)<20;int selected=grid.Select(x,y,z,keep?previous:-1,keep?.35f:0.f,manual);if(continuity){previous=selected;last_x=x;last_z=z;prior_valid=selected>=0;}return selected;}
 int Primary(const std::string& region){return Load(region)?primary:-1;}
 int StrictLayer(const std::string& region,float x,float y,float z,bool valid){return valid&&Load(region)?grid.Select(x,y,z):-1;}
@@ -100,8 +163,8 @@ void Draw(ImDrawList* draw,const std::string& region,int layer,ImVec2 center,ImV
     // A failed backend allocation stays WantCreate. Its retry consumes the same
     // four-request budget as newly decoded tiles on the following frame.
     for(const auto& slot:slots)if(slot.texture&&!slot.texture->WantDestroyNextFrame&&slot.texture->Status==ImTextureStatus_WantCreate)++uploads;
-    if(!std::isfinite(cx)||!std::isfinite(cz)||!std::isfinite(zoom)||zoom<=0||!std::isfinite(ui_scale)||ui_scale<=0||!Load(region)||layer<0||layer>=int(views.size())){draw->AddText({center.x-180,center.y},IM_COL32(223,214,187,255),"Static area data unavailable; check local pack.");return;}
-    if(!PrepareView(layer)){draw->AddText(center,IM_COL32(223,214,187,255),error.c_str());return;}
+    if(!std::isfinite(cx)||!std::isfinite(cz)||!std::isfinite(zoom)||zoom<=0||!std::isfinite(ui_scale)||ui_scale<=0||!Load(region)||layer<0||layer>=int(views.size())){draw->AddText({center.x-180,center.y},IM_COL32(223,214,187,255),JobBusy()?"Loading map...":"Static area data unavailable; check local pack.");return;}
+    if(!PrepareView(layer)){draw->AddText(center,IM_COL32(223,214,187,255),JobBusy()?"Loading map...":error.c_str());return;}
     opacity=std::clamp(opacity,0.f,1.f);const auto flags=BbMapFeatures::StaticRegionVisibility(region);const bool fog=BbMapFeatures::FogEnabled();const View& active=views[layer];const Transform& t=active.transform;const bool composite=active.composite;composite_active=composite;detail_ppu=t.ppu;
     // A composite is already ordered like V1 and excludes its active floor from context.
     // Legacy slices retain their original context+active composition for compatibility.
@@ -114,6 +177,6 @@ void Draw(ImDrawList* draw,const std::string& region,int layer,ImVec2 center,ImV
     if(!error.empty())draw->AddText({center.x-180,center.y},IM_COL32(223,214,187,255),error.c_str());draw_ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-start).count();
 }
 
-Json Stats(){int used=0,retired=0,owned=0,prepared=0;for(const auto& v:views)prepared+=!v.external.empty()&&v.prepared;std::set<ImTextureID> ids,owned_ids;for(const auto& s:slots)if(s.texture){++used;retired+=s.texture->WantDestroyNextFrame;if(s.texture->Status==ImTextureStatus_OK)ids.insert(s.texture->GetTexID());if(s.texture->GetTexID()!=ImTextureID_Invalid&&s.texture->BackendUserData){++owned;owned_ids.insert(s.texture->GetTexID());}}return {{"schema",1},{"detail_ppu",detail_ppu},{"loaded_detail_layer",detailed_layer},{"composite",composite_active},{"line_candidates",line_candidates},{"lines_drawn",line_drawn},{"line_limit",LineSegmentLimit},{"mode",mode},{"area_loaded",!views.empty()},{"layer",previous},{"manual_layer",manual},{"lod",last_lod},{"visible_tiles",visible},{"backend_ready_tiles",backend_ready},{"resident_slots",used},{"distinct_backend_textures",ids.size()},{"backend_owned_slots",owned},{"distinct_owned_backend_ids",owned_ids.size()},{"prepared_external_views",prepared},{"texture_creations_total",created_total},{"evictions_total",evicted_total},{"collected_slots_total",collected_total},{"retiring_slots",retired},{"slot_limit",CacheSlots},{"cpu_pixel_bytes",used*TileBytes},{"requested_gpu_rgba_byte_bound",CacheSlots*TileBytes},{"uploads_this_frame",uploads},{"hits",hits},{"misses",misses},{"integrity_failures",failures},{"local_candidates",grid.last_candidates},{"candidate_bound",grid.max_candidates},{"submit_ms",draw_ms},{"error",error}};}
-void Shutdown(){for(auto& s:slots)if(s.texture){if(s.texture->GetTexID()!=ImTextureID_Invalid||s.texture->BackendUserData)continue;ImGui::UnregisterUserTexture(s.texture.get());s.texture.reset();}grid={};views.clear();context={};line_cache={};detailed_layer=-1;loaded.clear();}
+Json Stats(){int used=0,retired=0,owned=0,prepared=0;for(const auto& v:views)prepared+=!v.external.empty()&&v.prepared;std::set<ImTextureID> ids,owned_ids;for(const auto& s:slots)if(s.texture){++used;retired+=s.texture->WantDestroyNextFrame;if(s.texture->Status==ImTextureStatus_OK)ids.insert(s.texture->GetTexID());if(s.texture->GetTexID()!=ImTextureID_Invalid&&s.texture->BackendUserData){++owned;owned_ids.insert(s.texture->GetTexID());}}return {{"schema",1},{"async_loading",AsyncLoading()},{"loader_jobs",int(timed_area_job.valid())+int(timed_view_job.valid())},{"loader_worker_limit",1},{"loader_requests",loader_requests},{"loader_stale_results",loader_stale},{"last_area_worker_ms",area_worker_ms},{"last_view_worker_ms",view_worker_ms},{"detail_ppu",detail_ppu},{"loaded_detail_layer",detailed_layer},{"composite",composite_active},{"line_candidates",line_candidates},{"lines_drawn",line_drawn},{"line_limit",LineSegmentLimit},{"mode",mode},{"area_loaded",area_ready},{"layer",previous},{"manual_layer",manual},{"lod",last_lod},{"visible_tiles",visible},{"backend_ready_tiles",backend_ready},{"resident_slots",used},{"distinct_backend_textures",ids.size()},{"backend_owned_slots",owned},{"distinct_owned_backend_ids",owned_ids.size()},{"prepared_external_views",prepared},{"texture_creations_total",created_total},{"evictions_total",evicted_total},{"collected_slots_total",collected_total},{"retiring_slots",retired},{"slot_limit",CacheSlots},{"cpu_pixel_bytes",used*TileBytes},{"requested_gpu_rgba_byte_bound",CacheSlots*TileBytes},{"uploads_this_frame",uploads},{"hits",hits},{"misses",misses},{"integrity_failures",failures},{"local_candidates",grid.last_candidates},{"candidate_bound",grid.max_candidates},{"submit_ms",draw_ms},{"error",error}};}
+void Shutdown(){if(timed_area_job.valid())try{timed_area_job.get();}catch(...){}if(timed_view_job.valid())try{timed_view_job.get();}catch(...){}for(auto& s:slots)if(s.texture){if(s.texture->GetTexID()!=ImTextureID_Invalid||s.texture->BackendUserData)continue;ImGui::UnregisterUserTexture(s.texture.get());s.texture.reset();}grid={};views.clear();context={};line_cache={};detailed_layer=-1;loaded.clear();area_ready=false;area_target.clear();view_target=-1;}
 }

@@ -20,6 +20,8 @@ def main():
         assert Path(normal['BB_USER_DIR']).is_relative_to(work)
         assert env['BB_ATLAS2_ENABLED']=='1' and env['BB_PREP_WORKERS']=='0'
         assert env['BB_MAP_FOG_ENABLED']=='1'
+        if json.loads((root/'atlas2-local.json').read_text()).get('async_loading'):
+            assert env.get('BB_ATLAS2_ASYNC_LOAD')=='1' and normal.get('BB_ATLAS2_ASYNC_LOAD')=='1'
         assert Path(env['BB_USER_DIR']).is_relative_to(work)
         configured_packs=Path(json.loads((root/'atlas2-local.json').read_text())['directory']).resolve();configured_packs.relative_to(work)
         assert env['BB_ATLAS2_INDEX_SHA256']==sha(configured_packs/'atlas2-index.json')

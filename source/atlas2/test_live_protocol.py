@@ -38,6 +38,20 @@ class ProtocolTests(unittest.TestCase):
         p=dict(valid=True,block=1,x=0.,y=0.,z=0.,yaw=0.)
         result=classify_comparison(dict(render=dict(pose=p,strict_layer=1,layer=1),visible_tiles=0),dict(render=dict(pose=p,v1_layer=1)))
         self.assertEqual(result['status'],'pass');self.assertNotEqual(result['visual_acceptance'],'pass')
+    def test_async_loading_is_not_an_empty_successful_render(self):
+        pose=dict(valid=True,block=1,x=0.,y=0.,z=0.,yaw=0.)
+        state=dict(open=True,async_loading=True,area_loaded=False,loader_jobs=1,loaded_detail_layer=-1,backend_ready_tiles=0,visible_tiles=0,uploads_this_frame=0,render=dict(mode=0,preview=False,pose=pose,layer=-1))
+        with patch.object(self.c,'wait',side_effect=lambda predicate,**kw:predicate(state)):
+            self.assertFalse(self.c.rendered(0,1))
+            state.update(area_loaded=True);state['render']['layer']=2
+            self.assertFalse(self.c.rendered(0,1))
+            state.update(loader_jobs=0,loaded_detail_layer=2)
+            self.assertTrue(self.c.rendered(0,1))
+    def test_stale_async_floor_is_not_ready(self):
+        pose=dict(valid=True,block=1,x=0.,y=0.,z=0.,yaw=0.)
+        state=dict(open=True,async_loading=True,area_loaded=True,loader_jobs=0,loaded_detail_layer=1,backend_ready_tiles=5,visible_tiles=5,uploads_this_frame=0,render=dict(mode=0,preview=False,pose=pose,layer=2))
+        with patch.object(self.c,'wait',side_effect=lambda predicate,**kw:predicate(state)):
+            self.assertFalse(self.c.rendered(0,1))
     def test_private_runner_copy_requires_matching_content_and_layout(self):
         expected=Path(self.temp.name)/'private/bin/bb-probe.exe';expected.parent.mkdir(parents=True);expected.write_bytes(b'verified build')
         actual=expected.parent.parent/'state/session-assets-test/bin/bb-probe.exe';actual.parent.mkdir(parents=True);actual.write_bytes(expected.read_bytes())

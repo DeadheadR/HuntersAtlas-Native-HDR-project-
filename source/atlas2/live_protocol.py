@@ -80,7 +80,8 @@ class Channel:
     def rendered(self,mode,after,timeout=30):
         def ready(s):
             r=s.get('render',{})
-            return s.get('open') is True and r.get('mode')==mode and r.get('preview') is False and valid_pose(r.get('pose')) and (mode==1 or s.get('backend_ready_tiles')==s.get('visible_tiles') and s.get('uploads_this_frame')==0)
+            metadata_ready = not s.get('async_loading') or (s.get('area_loaded') is True and s.get('loader_jobs')==0 and s.get('loaded_detail_layer')==r.get('layer'))
+            return s.get('open') is True and r.get('mode')==mode and r.get('preview') is False and valid_pose(r.get('pose')) and isinstance(r.get('layer'),int) and r['layer']>=0 and (mode==1 or metadata_ready and s.get('backend_ready_tiles')==s.get('visible_tiles') and s.get('uploads_this_frame')==0)
         return self.wait(ready,after=after,timeout=timeout)
 
 def classify_comparison(static,reference):

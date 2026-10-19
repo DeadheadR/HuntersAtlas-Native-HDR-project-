@@ -1,4 +1,5 @@
 param([ValidatePattern('^[a-z0-9_-]+$')][string]$Label='batch03',[string]$RunRoot='')
+[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
 $taskWorkspace=(Resolve-Path -LiteralPath "$PSScriptRoot\..\..").Path
 $taskOcrRoot=if($RunRoot){(Resolve-Path -LiteralPath $RunRoot).Path}else{"$taskWorkspace\.local\atlas2\qa\runs"}
 if(!$taskOcrRoot.StartsWith($taskWorkspace+[IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase)){throw 'OCR paths must remain in this workspace'}
@@ -19,6 +20,7 @@ $bitmap=Wait-Result ($decoder.GetSoftwareBitmapAsync()) ([Windows.Graphics.Imagi
 $engine=[Windows.Media.Ocr.OcrEngine]::TryCreateFromUserProfileLanguages()
 $result=Wait-Result ($engine.RecognizeAsync($bitmap)) ([Windows.Media.Ocr.OcrResult])
 $result.Text | Set-Content -LiteralPath "$taskOcrRoot\$Label\private-ocr.txt"
-$terms=@('continue','new game','load game','press','online','offline','ok','network','confirm','start','settings','data','agreement','corrupt','failed','error','you died','loading')
+$taskDeathRu = -join (0x432,0x44B,0x20,0x43F,0x43E,0x433,0x438,0x431,0x43B,0x438 | ForEach-Object { [char]$_ })
+$terms=@('continue','new game','load game','press','online','offline','ok','network','confirm','start','settings','data','agreement','corrupt','failed','error','you died',$taskDeathRu,'loading')
 $found=@($terms | Where-Object {$result.Text -match [regex]::Escape($_)})
 @{recognized_length=$result.Text.Length;generic_terms=$found;languages=@($engine.RecognizerLanguage.LanguageTag)} | ConvertTo-Json -Compress

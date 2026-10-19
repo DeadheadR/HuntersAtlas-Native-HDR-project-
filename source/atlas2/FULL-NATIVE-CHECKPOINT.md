@@ -1,5 +1,9 @@
 # Full-pack native checkpoint — batch07
 
+The updated loading implementation and ordinary height/layer traversal are
+recorded in [ASYNC-NATIVE-CHECKPOINT.md](ASYNC-NATIVE-CHECKPOINT.md). This document
+retains the synchronous build's historical measurements and coverage.
+
 The complete 16-area, 602-view package has passed a bounded native checkpoint.
 There are zero failed executed gates and four explicit coverage/acceptance gaps
 below. This is a private experimental test package, not complete gameplay
