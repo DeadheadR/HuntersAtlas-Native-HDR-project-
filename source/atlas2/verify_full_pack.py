@@ -1,7 +1,7 @@
 """Offline validation of every declared improved view; no native game or images."""
 from pathlib import Path
 from collections import OrderedDict
-import argparse,hashlib,json,math,struct,time,zlib
+import argparse,hashlib,json,math,re,struct,time,zlib
 from pack_format import sha,load_view,groups
 def require(ok,why):
  if not ok:raise RuntimeError(why)
@@ -18,10 +18,20 @@ def main():
   return d
  for entry in index['areas']:
   if a.areas and entry['area'] not in a.areas:continue
-  area=root/entry['area'];mfile=area/'manifest.json';require(sha(mfile)==entry['manifest_sha256'],'Manifest identity');m=json.loads(mfile.read_text());base=json.loads((a.baseline/entry['area']/'manifest.json').read_text());source_path=a.assets/'maps'/(entry['region_id']+'.json');require(sha(source_path)==m['source_sha256']==base['source_sha256'],'Geometry identity');require(sha(a.assets/'maps/features.json')==m['feature_sha256']==base['feature_sha256'],'Reveal feature identity');require(sha(area/'grid.json')==m['grid_sha256']==base['grid_sha256'],'Lookup grid changed');source=json.loads(source_path.read_text());require(m['bounds']==source['bounds'] and m['vertical_axis']=='Y' and m['layers']==base['layers'],'Area orientation/bounds/layer semantics');centroids=anchor_count=views=records=0
+  area=root/entry['area'];mfile=area/'manifest.json';require(sha(mfile)==entry['manifest_sha256'],'Manifest identity');require(mfile.stat().st_size<=32*1024**2,'Area metadata exceeds runtime bound');m=json.loads(mfile.read_text());base=json.loads((a.baseline/entry['area']/'manifest.json').read_text());source_path=a.assets/'maps'/(entry['region_id']+'.json');require(sha(source_path)==m['source_sha256']==base['source_sha256'],'Geometry identity');require(sha(a.assets/'maps/features.json')==m['feature_sha256']==base['feature_sha256'],'Reveal feature identity');require(sha(area/'grid.json')==m['grid_sha256']==base['grid_sha256'],'Lookup grid changed');source=json.loads(source_path.read_text());require(m['bounds']==source['bounds'] and m['vertical_axis']=='Y' and m['layers']==base['layers'],'Area orientation/bounds/layer semantics');centroids=anchor_count=views=records=0
   for layer,header in enumerate(m['views']):
    if 'view_file' not in header:continue
-   v=load_view(area,header);require(v['layer_index']==layer and v['source_sha256']==m['source_sha256'],'Floor identity');require(v['ppu']==16 and v['orientation']=='+X right, +Z up' and v['units']=='native-game-world-units' and v['vertical_axis']=='Y','Floor transform convention');require(v['world_bounds']==source['bounds'],'Floor world bounds');l=source['layers'][layer];require(abs(v['anchor']-l['anchor'])<.0005 and abs(v['span']-l['span'])<.0005,'Floor height semantics');b=m['bounds'];matrix=[16,0,-b[0]*16,0,-16,b[3]*16];require(v['world_to_image']==matrix,'Explicit transform matrix');require(v['width']==math.ceil((b[2]-b[0])*16) and v['height']==math.ceil((b[3]-b[1])*16),'Image dimensions');require(v['height_extent'][0]<=v['height_extent'][1],'Vertical extent');visible=None
+   v=load_view(area,header);require(v['layer_index']==layer and v['source_sha256']==m['source_sha256'],'Floor identity');require((area/header['view_file']).stat().st_size<=16*1024**2 and v['schema']==1 and v['generator_identity']==m['parity_generator_identity'],'View schema/generator/runtime size');require(v['ppu']==16 and v['orientation']=='+X right, +Z up' and v['units']=='native-game-world-units' and v['vertical_axis']=='Y','Floor transform convention');require(v['world_bounds']==source['bounds'],'Floor world bounds');l=source['layers'][layer];require(abs(v['anchor']-l['anchor'])<.0005 and abs(v['span']-l['span'])<.0005,'Floor height semantics');b=m['bounds'];matrix=[16,0,-b[0]*16,0,-16,b[3]*16];require(v['world_to_image']==matrix,'Explicit transform matrix');require(v['width']==math.ceil((b[2]-b[0])*16) and v['height']==math.ceil((b[3]-b[1])*16),'Image dimensions');require(v['height_extent'][0]<=v['height_extent'][1],'Vertical extent');visible=None
+   feature=json.loads((a.assets/'maps/features.json').read_text())['areas'][entry['region_id']];rules=len(feature.get('reveal_regions',[]));expected_variants=set()
+   for shaded in [0,1]:
+    if feature.get('always_visible',False):expected_variants.add((shaded,'any',(),()))
+    else:
+     expected_variants.add((shaded,'off',(),()))
+     for mask in range(1<<rules):expected_variants.add((shaded,'on',tuple(i for i in range(rules) if mask&(1<<i)),tuple(i for i in range(rules) if not mask&(1<<i))))
+   variants={(g.get('shaded'),g.get('fog_mode'),tuple(g.get('requires',[])),tuple(g.get('forbids',[]))) for g in v['groups']};require(variants==expected_variants and len(v['groups'])==len(expected_variants),'Fog/shading variant completeness')
+   lods=1
+   while max(v['width'],v['height'])/2**(lods-1)>256:lods+=1
+   require(v['levels']==lods,'LOD extent coverage')
    for g,tiles in groups(v):
     if g['shaded']==1 and g['fog_mode'] in ['off','any']:visible={(t['lod'],t['x'],t['y']):t for t in tiles}
     seen=set()
@@ -67,5 +77,12 @@ def main():
   for x,y,z in poses:
    u=(x-m['bounds'][0])*16;vv=(m['bounds'][3]-z)*16;require(abs(m['bounds'][0]+u/16-x)<1e-8 and abs(m['bounds'][3]-vv/16-z)<1e-8,'Anchor roundtrip');anchor_count+=1
   rows.append(dict(area=entry['area'],improved_views=views,triangle_centroids=centroids,anchors=anchor_count,tile_records=records));total_centroids+=centroids;total_anchors+=anchor_count;print('FULL_PACK_VALIDATED '+json.dumps(rows[-1]),flush=True)
- count=sum(r['improved_views'] for r in rows);require(count==a.expected,'Exact improved-view count');report=dict(schema=1,pass_=True,index_sha256=sha(root/'atlas2-index.json'),areas=len(rows),improved_views=count,unique_tile_files_checked=len(checked),triangle_centroids=total_centroids,centroids_needing_neighbor_pixel=neighbors,degenerate_triangles_skipped=degenerate,anchor_roundtrips=total_anchors,pixel_cache_bound=64,seconds=time.monotonic()-began,areas_detail=rows,native_gameplay_tested=False,scope='Declared-file integrity, transforms and finite source-triangle centroid coverage; not every world coordinate or navigation readability');report['pass']=report.pop('pass_');a.report.write_text(json.dumps(report,indent=2));print('FULL_PACK_VALIDATION_PASS views='+str(count),flush=True)
+ topology=[]
+ for row in rows:
+  log=root/row['area']/'bake-full.log'
+  if log.exists():
+   for line in log.read_text(errors='replace').splitlines():
+    match=re.search(r'topology_ready holes=(\d+) rejected=(\d+) budget_skips=(\d+)',line)
+    if match:topology.append(dict(area=row['area'],holes=int(match[1]),rejected_rings=int(match[2]),inherited_v1_interior_budget_skips=int(match[3])))
+ count=sum(r['improved_views'] for r in rows);require(count==a.expected,'Exact improved-view count');report=dict(schema=1,pass_=True,index_sha256=sha(root/'atlas2-index.json'),areas=len(rows),improved_views=count,unique_tile_files_checked=len(checked),triangle_centroids=total_centroids,centroids_needing_neighbor_pixel=neighbors,degenerate_triangles_skipped=degenerate,anchor_roundtrips=total_anchors,pixel_cache_bound=64,seconds=time.monotonic()-began,areas_detail=rows,topology_limits=topology,native_gameplay_tested=False,scope='Declared-file integrity, transforms and finite source-triangle centroid coverage; not every world coordinate or navigation readability');report['pass']=report.pop('pass_');a.report.write_text(json.dumps(report,indent=2));print('FULL_PACK_VALIDATION_PASS views='+str(count),flush=True)
 if __name__=='__main__':main()
