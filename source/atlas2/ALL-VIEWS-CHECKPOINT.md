@@ -1,5 +1,11 @@
 # Full improved-style pack — offline checks complete
 
+The subsequent reserved native window is recorded in
+[FULL-NATIVE-CHECKPOINT.md](FULL-NATIVE-CHECKPOINT.md). Executed full-package
+native gates pass, with explicit remaining live coverage, death/respawn, natural
+stair/overlap and human-readability gaps. The historical generation checkpoint
+below remains the offline evidence; it is not a claim of full gameplay acceptance.
+
 All 602 views across 16 anonymous areas are generated and strictly verified.
 The final catalog is approximately 9.66 GiB, within the unchanged 16 GiB output
 cap and 16 GiB free-space reserve. The base generation completed in 11,127 seconds
