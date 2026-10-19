@@ -6,7 +6,7 @@ from pack_format import sha,load_view,groups
 def require(ok,why):
  if not ok:raise RuntimeError(why)
 def main():
- p=argparse.ArgumentParser();p.add_argument('--pack-root',type=Path,required=True);p.add_argument('--baseline',type=Path,required=True);p.add_argument('--assets',type=Path,required=True);p.add_argument('--report',type=Path,required=True);p.add_argument('--expected',type=int,default=602);p.add_argument('--areas',nargs='*');a=p.parse_args();root=a.pack_root.resolve();require((root/'atlas2-index.json').stat().st_size<=1024**2,'Root index runtime bound');index=json.loads((root/'atlas2-index.json').read_text());require(index['schema']==1 and len(index['areas'])==16 and {e['area'] for e in index['areas']}=={'Area%02d'%i for i in range(1,17)} and len({e['region_id'] for e in index['areas']})==16,'Exact root area inventory');checked={};cache=OrderedDict();rows=[];began=time.monotonic();total_centroids=total_anchors=neighbors=degenerate=0
+ p=argparse.ArgumentParser();p.add_argument('--pack-root',type=Path,required=True);p.add_argument('--baseline',type=Path,required=True);p.add_argument('--assets',type=Path,required=True);p.add_argument('--report',type=Path,required=True);p.add_argument('--expected',type=int,default=602);p.add_argument('--areas',nargs='*');p.add_argument('--collect-raster-gaps',action='store_true');a=p.parse_args();root=a.pack_root.resolve();require((root/'atlas2-index.json').stat().st_size<=1024**2,'Root index runtime bound');index=json.loads((root/'atlas2-index.json').read_text());require(index['schema']==1 and len(index['areas'])==16 and {e['area'] for e in index['areas']}=={'Area%02d'%i for i in range(1,17)} and len({e['region_id'] for e in index['areas']})==16,'Exact root area inventory');checked={};cache=OrderedDict();rows=[];gaps=[];began=time.monotonic();total_centroids=total_anchors=neighbors=degenerate=0
  def pixels(path,expected,need_pixels=True):
   path=path.resolve();path.relative_to(root)
   if path in checked:
@@ -23,6 +23,7 @@ def main():
   area=root/entry['area'];mfile=area/'manifest.json';require(sha(mfile)==entry['manifest_sha256'],'Manifest identity');require(mfile.stat().st_size<=32*1024**2,'Area metadata exceeds runtime bound');m=json.loads(mfile.read_text());base=json.loads((a.baseline/entry['area']/'manifest.json').read_text());source_path=a.assets/'maps'/(entry['region_id']+'.json');require(sha(source_path)==m['source_sha256']==base['source_sha256'],'Geometry identity');require(sha(a.assets/'maps/features.json')==m['feature_sha256']==base['feature_sha256'],'Reveal feature identity');require(sha(area/'grid.json')==m['grid_sha256']==base['grid_sha256'],'Lookup grid changed');source=json.loads(source_path.read_text());require(m['bounds']==source['bounds'] and m['vertical_axis']=='Y' and m['layers']==base['layers'],'Area orientation/bounds/layer semantics');centroids=anchor_count=views=records=0
   require(all(m[k]==base[k] for k in ['ppu','width','height','levels','primary','units','orientation','world_to_image','horizontal_axes']),'Baseline area transform/primary identity')
   context_records=0
+  gaps_before=len(gaps)
   for group,tiles in groups(m['context']):
    for tile in tiles:
     lod=tile['lod'];require(0<=lod<m['levels'] and 0<=tile['x']<math.ceil(m['width']/(256*2**lod)) and 0<=tile['y']<math.ceil(m['height']/(256*2**lod)),'Legacy context tile coordinate');pixels(area/tile['file'],tile['sha256'],False);context_records+=1
@@ -63,7 +64,7 @@ def main():
     for line_id in ids:
      require(0<=line_id<len(lines['lines']),'Line cell index');referenced.add(line_id)
    require(referenced==set(range(len(lines['lines']))),'Unindexed line segment')
-   for t in l['triangles']:
+   for triangle_index,t in enumerate(l['triangles']):
     triangle_area=abs((t[2]-t[0])*(t[5]-t[1])-(t[4]-t[0])*(t[3]-t[1]))*.5
     if triangle_area<1e-8:degenerate+=1;continue
     x=(t[0]+t[2]+t[4])/3;z=(t[1]+t[3]+t[5])/3;u=(x-b[0])*16;vv=(b[3]-z)*16;require(math.hypot(b[0]+u/16-x,b[3]-vv/16-z)<1e-8,'Transform roundtrip');found=False
@@ -78,12 +79,16 @@ def main():
      if found:
       if radius:neighbors+=1
       break
-    require(found,'Walkable centroid has no nearby raster coverage');centroids+=1
+    if not found:
+     diagnostic=dict(schema=1,area=entry['area'],layer_id='F%03d'%layer,triangle_index=triangle_index,triangle_xz=t,triangle_y=l['heights'][triangle_index],centroid_world_xyz=[x,sum(l['heights'][triangle_index])/3,z],centroid_image_uv=[u,vv],triangle_area_world=triangle_area,triangle_span_pixels=[(max(t[0::2])-min(t[0::2]))*16,(max(t[1::2])-min(t[1::2]))*16],view_file=header['view_file'],scope='Private numeric counterexample; no image or native gameplay test');print('RASTER_COUNTEREXAMPLE '+entry['area']+' F%03d'%layer+' triangle='+str(triangle_index),flush=True)
+     if not a.collect_raster_gaps:a.report.with_name(a.report.stem+'-failure.json').write_text(json.dumps(diagnostic,indent=2));require(False,'Walkable centroid has no nearby raster coverage')
+     gaps.append(diagnostic);require(len(gaps)<=4096,'Raster counterexample collection bound')
+    centroids+=1
    views+=1
   poses=json.loads((area/'anchors.json').read_text())['poses']
   for x,y,z in poses:
    u=(x-m['bounds'][0])*16;vv=(m['bounds'][3]-z)*16;require(abs(m['bounds'][0]+u/16-x)<1e-8 and abs(m['bounds'][3]-vv/16-z)<1e-8,'Anchor roundtrip');anchor_count+=1
-  rows.append(dict(area=entry['area'],improved_views=views,triangle_centroids=centroids,anchors=anchor_count,tile_records=records,legacy_context_tile_records=context_records));total_centroids+=centroids;total_anchors+=anchor_count;print('FULL_PACK_VALIDATED '+json.dumps(rows[-1]),flush=True)
+  rows.append(dict(area=entry['area'],improved_views=views,triangle_centroids=centroids,anchors=anchor_count,tile_records=records,legacy_context_tile_records=context_records,raster_gaps=len(gaps)-gaps_before));total_centroids+=centroids;total_anchors+=anchor_count;print('FULL_PACK_CHECKED '+json.dumps(rows[-1]),flush=True)
  topology=[]
  for row in rows:
   log=root/row['area']/'bake-full.log'
@@ -91,5 +96,6 @@ def main():
    for line in log.read_text(errors='replace').splitlines():
     match=re.search(r'topology_ready holes=(\d+) rejected=(\d+) budget_skips=(\d+)',line)
     if match:topology.append(dict(area=row['area'],holes=int(match[1]),rejected_rings=int(match[2]),inherited_v1_interior_budget_skips=int(match[3])))
- count=sum(r['improved_views'] for r in rows);require(count==a.expected,'Exact improved-view count');report=dict(schema=1,pass_=True,index_sha256=sha(root/'atlas2-index.json'),areas=len(rows),improved_views=count,unique_tile_files_checked=len(checked),triangle_centroids=total_centroids,centroids_needing_neighbor_pixel=neighbors,degenerate_triangles_skipped=degenerate,anchor_roundtrips=total_anchors,pixel_cache_bound=64,seconds=time.monotonic()-began,areas_detail=rows,topology_limits=topology,native_gameplay_tested=False,scope='Declared-file integrity, transforms and finite source-triangle centroid coverage; not every world coordinate or navigation readability');report['pass']=report.pop('pass_');a.report.write_text(json.dumps(report,indent=2));print('FULL_PACK_VALIDATION_PASS views='+str(count),flush=True)
+ count=sum(r['improved_views'] for r in rows);require(count==a.expected,'Exact improved-view count');report=dict(schema=1,pass_=not gaps,structural_pass=True,index_sha256=sha(root/'atlas2-index.json'),areas=len(rows),improved_views=count,unique_tile_files_checked=len(checked),triangle_centroids=total_centroids,centroids_needing_neighbor_pixel=neighbors,degenerate_triangles_skipped=degenerate,anchor_roundtrips=total_anchors,pixel_cache_bound=64,seconds=time.monotonic()-began,areas_detail=rows,topology_limits=topology,raster_gap_count=len(gaps),raster_gaps=gaps,native_gameplay_tested=False,scope='Declared-file integrity, transforms and finite source-triangle centroid coverage; not every world coordinate or navigation readability');report['pass']=report.pop('pass_');a.report.write_text(json.dumps(report,indent=2));print(('FULL_PACK_VALIDATION_GAPS' if gaps else 'FULL_PACK_VALIDATION_PASS')+' views='+str(count)+' gaps='+str(len(gaps)),flush=True)
+ if gaps:raise SystemExit(1)
 if __name__=='__main__':main()
