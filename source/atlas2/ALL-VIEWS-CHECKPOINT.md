@@ -88,3 +88,14 @@ native world. It restores the paused closed-map state afterward. These are nativ
 present-hook/map-CPU samples at one stationary location, not independent GPU
 timings or evidence that general closed-map gameplay lag is fixed. Three new
 tests reject pause/gameplay misclassification; all 22 Atlas2 Python tests pass.
+
+At 303 completed views the first controller exited after Windows denied an atomic
+state-file replacement. Its existing Area09 baker remained alive; it was inspected
+and supervised without launching another generator. The Windows reader/writer
+contention was reproduced locally. Controller metadata now uses `ReplaceFileW`,
+shared-delete readers, coherent single-read hashes and a five-second bounded retry.
+Persistent controller errors stop only their own CPU child and retain completed
+checkpoints. Four new IO tests pass, including replacement while an old reader
+remains open; all 26 Atlas2 Python tests pass. The four frozen raster-generator
+sources and their content identity are unchanged. Recovery must wait until that
+existing baker exits and retain the original six-hour deadline and storage limits.
