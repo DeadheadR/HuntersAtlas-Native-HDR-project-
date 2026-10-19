@@ -31,5 +31,14 @@ unrevealed fog variant empty, preserves original objects/views and exact rollbac
 metadata, and passes an idempotent rerun. The current runtime's CPU cache harness
 accepts that repaired fixture for 72 frames with no integrity failures.
 
-Game-derived trial repair and the final strict full-pack verification remain
-pending. No native gameplay or new live area coverage is implied by these tests.
+The game-derived Area11 trial passes all 46 views with zero gaps, 85,805 centroids,
+548 anchor checks and 3,312 runtime CPU-cache frames. All 14,231 original area tile
+objects were rechecked against their content identities, including legacy tiles
+with coordinate-based filenames. The main catalog was unchanged during that trial.
+
+`promote_coverage_trial.py` pins the full 602-view structural inventory, the strict
+trial index, the runtime-cache index and preservation receipts before copying the
+validated result. It retains old objects/views and exact pre-promotion manifests.
+358 new files were promoted without rerendering the full catalog. The final strict
+check passes all 602 views and 742,247 centroids with zero gaps. The CPU-cache test
+also passes all 602 views. No native gameplay or new live area coverage is implied.

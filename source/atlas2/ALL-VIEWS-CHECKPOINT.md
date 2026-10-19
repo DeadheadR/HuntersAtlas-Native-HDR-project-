@@ -1,4 +1,36 @@
-# Full improved-style generation — in progress
+# Full improved-style pack — offline checks complete
+
+All 602 views across 16 anonymous areas are generated and strictly verified.
+The final catalog is approximately 9.66 GiB, within the unchanged 16 GiB output
+cap and 16 GiB free-space reserve. The base generation completed in 11,127 seconds
+from its preserved original start window. No native game was launched in this run.
+
+Final validation checks 154,726 declared physical tile files, 742,247 nondegenerate
+source-triangle centroids and 7,128 anchor roundtrips with zero raster gaps. The
+runtime CPU cache harness passes 43,344 frames across all 602 views, with at most
+64 slots including retiring textures and four upload requests/frame. Exactly one
+external view remains prepared. This is not a physical VRAM measurement or a new
+native performance result.
+
+The inherited V1 interior topology helper reports one fill-budget skip. This
+preexisting limit is recorded in the final report; all tested walkable triangle
+centroids still have raster coverage. It is not a claim of semantic readability
+or exhaustive world-coordinate coverage.
+
+Two center-sampling gaps in Area11 were corrected through an isolated analytic
+coverage stage, then its validated files were promoted with exact metadata backups.
+The other 15 area manifests were retained, and all 14 previously accepted control
+views have identical encoded pixels. See [SUBPIXEL-COVERAGE.md](SUBPIXEL-COVERAGE.md).
+The complete full-pack profile is installed only in `.local/atlas2/Atlas2-test`,
+with measurement/comparison enabled, fog enabled and `BB_PREP_WORKERS=0`.
+The prototype binary/checkpoints and original working V1 remain available.
+
+The remaining native stage requires a newly reserved GPU window from the parent.
+It includes cold opening, real cache eviction, matched active/paused conditions,
+supported copied-save travel, layer transitions and a bounded ordinary-input
+death/respawn attempt if feasible, followed by restart. Twelve areas remain live
+coverage gaps in the inspected copied saves. Offline checks are finite samples,
+not every-coordinate or every-location gameplay coverage.
 
 The new output is `.local/atlas2/parity-full16/`; original verified packs,
 the 14-view parity set, prototype and repaired runtime rollback remain unchanged.
@@ -58,7 +90,7 @@ the previously documented non-default-zoom hatch-width and antialiasing differen
   602 external files, line geometry/index completeness, source identities, explicit
   transforms and source-triangle centroid coverage after generation completes.
 
-Further required checks remain pending: full 602 validation, updated native cold
+Further required native checks remain pending: updated native cold
 opening and cache eviction, local normal/max-zoom readability, live layer transitions,
 and a bounded copied-save death/respawn/restart if feasible through ordinary input.
 The pinned runtime's existing `BB_PAD_FILE` hook supports button names and four
@@ -78,7 +110,7 @@ first-use cache. Manual reference rendering honors the explicit comparison floor
 automatic measurement mode still uses V1's own floor selection. Returning from a
 forced manual floor clears that forced history before applying normal hysteresis.
 A sixth synthetic overlap test covers this reset. V1 Python/native regressions
-pass on the updated build. Native validation remains pending until generation ends.
+pass on the updated build. Full-pack native validation awaits its reserved GPU window.
 
 The full-pack driver also has a separate `gameplay` stage. It resumes the copied
 save through the existing ordinary options-button input hook, then samples five
