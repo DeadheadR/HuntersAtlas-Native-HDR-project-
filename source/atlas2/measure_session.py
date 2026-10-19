@@ -14,14 +14,14 @@ def distribution(values,discard=0):
     mean=statistics.mean(values)
     return dict(samples=len(values),mean_ms=mean,median_ms=statistics.median(values),p95_ms=quantile(.95),p99_ms=quantile(.99),min_ms=min(values),max_ms=max(values),population_variance_ms2=statistics.pvariance(values),sample_stddev_ms=statistics.stdev(values) if len(values)>1 else None,fps_from_interval_mean=1000/mean if mean else None)
 
-def settle(channel,seconds,pose):
+def settle(channel,seconds,pose,*,native_menu_paused=True):
     until=time.monotonic()+seconds
     while time.monotonic()<until:
         s=channel.read()
-        if not matched_pose(pose,s['pose']) or not s['menu_top']:raise ProtocolError('Stationary paused pose changed')
+        if not matched_pose(pose,s['pose']) or s.get('menu_top') is not native_menu_paused:raise ProtocolError('Stationary pose or required native menu state changed')
         time.sleep(.15)
 
-def sample(channel,session,condition,seconds,pose,*,cold=False):
+def sample(channel,session,condition,seconds,pose,*,cold=False,native_menu_paused=True):
     reference=condition.startswith('reference');closed=condition.endswith('closed');disabled=condition=='ui_disabled'
     if cold:
         channel.command('close');issued=channel.command('atlas2-measure-open-'+('reference ' if reference else 'static ')+condition)
@@ -32,13 +32,13 @@ def sample(channel,session,condition,seconds,pose,*,cold=False):
             if disabled:channel.command('disable')
         else:
             channel.command('open');channel.command('recenter');channel.rendered(1 if reference else 0,channel.read()['sequence'])
-        settle(channel,2,pose);issued=channel.command('atlas2-measure-start '+condition)
+        settle(channel,2,pose,native_menu_paused=native_menu_paused);issued=channel.command('atlas2-measure-start '+condition)
     generation=issued['ack']['measurement_generation'];started=issued
-    settle(channel,seconds,pose);stopped=channel.command('atlas2-measure-stop');data=read_json(channel.trace.parent/'trace.json.measurement.json')
+    settle(channel,seconds,pose,native_menu_paused=native_menu_paused);stopped=channel.command('atlas2-measure-stop');data=read_json(channel.trace.parent/'trace.json.measurement.json')
     if data.get('generation')!=generation or data.get('condition')!=condition or data.get('overflow'):raise ProtocolError('Measurement generation/content mismatch')
     if not matched_pose(pose,stopped['pose']):raise ProtocolError('Measured pose changed')
     target=session/'measurements'/('g'+str(generation)+'-'+condition+'.json');target.parent.mkdir(exist_ok=True);atomic_json(target,data)
-    row=dict(condition=condition,generation=generation,cold=cold,cold_definition='First use of this area/render path in this process; OS file/shader caches may already be warm' if cold else None,pose=pose,pose_matched=True,native_menu_paused=True,present=distribution(data['present_interval_ms'],0 if cold else 2),map_cpu=distribution(data['map_cpu_elapsed_ms'],0 if cold else 2),setup_cpu_elapsed_ms=data['setup_cpu_elapsed_ms'],first_present_interval_ms=data['present_interval_ms'][0] if data['present_interval_ms'] else None,first_map_cpu_elapsed_ms=data['map_cpu_elapsed_ms'][0] if data['map_cpu_elapsed_ms'] else None,raw_samples=str(target),before=started,after=stopped,seconds_requested=seconds)
+    row=dict(condition=condition,generation=generation,cold=cold,cold_definition='First use of this area/render path in this process; OS file/shader caches may already be warm' if cold else None,pose=pose,pose_matched=True,native_menu_paused=native_menu_paused,present=distribution(data['present_interval_ms'],0 if cold else 2),map_cpu=distribution(data['map_cpu_elapsed_ms'],0 if cold else 2),setup_cpu_elapsed_ms=data['setup_cpu_elapsed_ms'],first_present_interval_ms=data['present_interval_ms'][0] if data['present_interval_ms'] else None,first_map_cpu_elapsed_ms=data['map_cpu_elapsed_ms'][0] if data['map_cpu_elapsed_ms'] else None,raw_samples=str(target),before=started,after=stopped,seconds_requested=seconds)
     row['map_cpu'].pop('fps_from_interval_mean',None)
     return row
 

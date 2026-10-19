@@ -79,3 +79,12 @@ automatic measurement mode still uses V1's own floor selection. Returning from a
 forced manual floor clears that forced history before applying normal hysteresis.
 A sixth synthetic overlap test covers this reset. V1 Python/native regressions
 pass on the updated build. Native validation remains pending until generation ends.
+
+The full-pack driver also has a separate `gameplay` stage. It resumes the copied
+save through the existing ordinary options-button input hook, then samples five
+six-second conditions: disabled, enabled/closed, static/open, enabled/closed,
+disabled. Each sample requires the same valid pose and a continuously unpaused
+native world. It restores the paused closed-map state afterward. These are native
+present-hook/map-CPU samples at one stationary location, not independent GPU
+timings or evidence that general closed-map gameplay lag is fixed. Three new
+tests reject pause/gameplay misclassification; all 22 Atlas2 Python tests pass.
