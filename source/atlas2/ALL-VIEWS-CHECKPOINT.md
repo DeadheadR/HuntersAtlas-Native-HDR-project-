@@ -69,3 +69,13 @@ always releases input. No health or unlock-memory writes are added.
 Twelve areas remain unavailable in the inspected progressed-save copies. Their
 offline packs do not count as live coverage. No real gameplay/map image uploads,
 public release, remote push or working-install replacement are authorized here.
+
+Prepared native QA instrumentation now counts all owned backend textures, including
+retiring ones, separately from pending requests; cumulative creation/eviction/
+collection counters prove that a cache test actually reloads content. Full-pack
+cold tests require the completed 602-view validation hash and a genuinely empty
+first-use cache. Manual reference rendering honors the explicit comparison floor;
+automatic measurement mode still uses V1's own floor selection. Returning from a
+forced manual floor clears that forced history before applying normal hysteresis.
+A sixth synthetic overlap test covers this reset. V1 Python/native regressions
+pass on the updated build. Native validation remains pending until generation ends.

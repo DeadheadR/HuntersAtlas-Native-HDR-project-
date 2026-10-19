@@ -658,7 +658,7 @@ void Draw() {
         if(BbMapStatic::Enabled()&&BbMapStatic::Mode()!=0&&reference_area.id!=metadata.id){reference_area=Area{};reference_area.id=metadata.id;reference_area.name=metadata.name;std::copy(std::begin(metadata.bounds),std::end(metadata.bounds),reference_area.bounds);}
         const bool reference=BbMapStatic::Enabled()&&BbMapStatic::Mode()!=0&&Load(reference_area);
         auto& a=reference?reference_area:metadata;
-        int active=current==selected&&!preview_active?(reference&&measurement.Enabled()?AutoLayerV1(a):AutoLayer(a)):PrimaryLayer(a);
+        int active=current==selected&&!preview_active?(reference&&measurement.Enabled()&&BbMapStatic::ManualLayer()<0?AutoLayerV1(a):AutoLayer(a)):PrimaryLayer(a);
         if(preview_active&&selected_destination>=0&&destinations[selected_destination].area==a.id){const auto saved=location;const auto& d=destinations[selected_destination];location.x=d.x;location.y=d.y;location.z=d.z;active=AutoLayer(a);location=saved;}
         if(active>=0)render_y=a.layers[active].anchor;
         if(BbMapStatic::Enabled()) {

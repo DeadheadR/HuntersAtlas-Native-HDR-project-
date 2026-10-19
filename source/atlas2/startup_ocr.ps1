@@ -19,6 +19,6 @@ $bitmap=Wait-Result ($decoder.GetSoftwareBitmapAsync()) ([Windows.Graphics.Imagi
 $engine=[Windows.Media.Ocr.OcrEngine]::TryCreateFromUserProfileLanguages()
 $result=Wait-Result ($engine.RecognizeAsync($bitmap)) ([Windows.Media.Ocr.OcrResult])
 $result.Text | Set-Content -LiteralPath "$taskOcrRoot\$Label\private-ocr.txt"
-$terms=@('continue','new game','load game','press','online','offline','ok','network','confirm','start','settings','data','agreement','corrupt','failed','error')
+$terms=@('continue','new game','load game','press','online','offline','ok','network','confirm','start','settings','data','agreement','corrupt','failed','error','you died','loading')
 $found=@($terms | Where-Object {$result.Text -match [regex]::Escape($_)})
 @{recognized_length=$result.Text.Length;generic_terms=$found;languages=@($engine.RecognizerLanguage.LanguageTag)} | ConvertTo-Json -Compress
