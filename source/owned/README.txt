@@ -36,3 +36,8 @@ stretching. Mouse-wheel, keyboard and controller zoom use matching scaled limits
 Renderer checks covered 720p, 1080p, 1440p, 4K, 1920×1200, 3440×1440 and
 5120×1440, plus resizing and zoom. These are offscreen renderer checks; every
 resolution has not been tested through a live game's display mode switch.
+
+## Supported version
+
+**Atlas 3.0 is the only supported version. All earlier versions are legacy and
+no longer supported. Please update to 3.0 before reporting an issue.**
