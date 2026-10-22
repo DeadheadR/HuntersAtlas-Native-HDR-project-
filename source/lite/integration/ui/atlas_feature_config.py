@@ -6,7 +6,7 @@ DEFAULTS = {
     'atlas_npc_mode': 'all', 'atlas_items_enabled': False,
     'atlas_item_healing': True, 'atlas_item_insight': True,
     'atlas_item_equipment': True, 'atlas_item_echoes': True,
-    'atlas_travel_enabled': False, 'atlas_fog_enabled': False,
+    'atlas_travel_enabled': True, 'atlas_fog_enabled': False,
 }
 
 

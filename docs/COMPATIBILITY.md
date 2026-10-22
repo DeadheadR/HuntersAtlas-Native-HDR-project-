@@ -1,23 +1,26 @@
 # Compatibility
 
-Hunter’s Atlas 1.3 runs as an independent installation with its own tested Windows 1.9 runtime. The ordinary desktop Bloodborne shortcut opens the game; **Play** leads to the native in-game **Map** tile. Atlas updates arrive in Atlas packages. Updating a separate ordinary launcher does not replace Atlas or its maps.
+Windows 10/11 x64. Verified game: CUSA00207 1.09.
+Included Windows runtime: 1.9. A separate launcher installation is not required.
 
-| Component | Verified identity |
-| --- | --- |
-| Operating system requirement | Windows 10 or Windows 11, 64-bit |
-| Game | CUSA00207, version 1.09 |
-| Game executable | `Image0/eboot.bin` SHA-256 `d65f0b4f01d59166aed16f8604196d8b7dd805abbf0758b356e8f1354c9429f9` |
-| Atlas runtime | Tested Windows 1.9 runtime with its own Python, Tk and required DLLs |
-| Player package | `Hunters-Atlas-1.3-Windows.zip` |
-| Source package | `Hunters-Atlas-1.3-Source.zip` |
-| Package size | About 177 MB download; about 415 MB installed, plus generated caches |
+## Mouse and display
 
-The verified game build and tested runtime do not establish support for other game builds, all graphics devices, or every Windows configuration. The package does not include Bloodborne files, generated maps, native font or saves. It requires no system Python, compiler or official launcher private interpreter.
+For faster camera turning: **Inputs → Mouse look → Sensitivity**, then **Save**.
+The default is 1.0; try 2.0 and adjust to taste. Mouse-look emulates the right
+stick, so Bloodborne's maximum stick turn speed still applies.
 
-## Data and map limits
+The map scales proportionally to the display and keeps its world coverage when
+the window is resized. Ultrawide and taller screens use a centered layout without
+stretching. Mouse-wheel, keyboard and controller zoom use matching scaled limits.
 
-Keep the Atlas package in an ordinary local directory outside OneDrive/synced or linked folders. The desktop shortcut can use the Windows Desktop location even when it is redirected.
+## What's new
 
-Install imports the selected game, DLC, save location and launcher preferences. Maps are prepared from the player’s own game files if a compatible pack is unavailable, then reused. Atlas keeps its own profile and settings. Updating Atlas preserves those along with valid maps; rebuildable caches are recreated as needed. If the imported Atlas preference is off, enable it under **Mods & patches** before choosing **Play** from the normal desktop shortcut, then open the native in-game Map tile.
+- All map shapes, outlines and decorative geometry are compiled once offline.
+- The game loads compact map data and draws it directly; no collision extraction
+  or map triangulation runs while playing.
+- Correct area names, live position, floors, pan/zoom and discovered-lamp travel.
+- Works independently of the version of any separately installed launcher.
 
-The map provides live player position and facing, pan, zoom, floor context and navigation across supported areas. Gate markers remain static. See [controls and coverage](MAP-FEATURES.md) for input, NPC dialogue stages, fixed pickups and boss reveal rules. Chalice Dungeons are not supported. The test record in [QA status](QA.md) does not certify every route, floor transition, controller or GPU.
+Renderer checks covered 720p, 1080p, 1440p, 4K, 1920×1200, 3440×1440 and
+5120×1440, plus resizing and zoom. These are offscreen renderer checks; every
+resolution has not been tested through a live game's display mode switch.

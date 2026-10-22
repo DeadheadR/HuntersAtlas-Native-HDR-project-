@@ -1,24 +1,38 @@
-# Atlas updates and recovery
+# Hunter's Atlas 3.0
 
-Hunter’s Atlas 1.3 owns its tested Windows 1.9 runtime, Python, Tk and required DLLs. An ordinary update to a separate Bloodborne launcher does not replace the Atlas runtime or generated maps. Atlas runtime updates are delivered through Atlas packages.
+All 16 supported areas and 602 floors are already baked into compact vector data.
+No map generation, compiler, map download or separately installed launcher is needed.
+Atlas includes its own tested Windows runtime, Python and required DLLs.
 
-For an independent Atlas installation, close Atlas and the game, extract the new **Hunters-Atlas-1.3-Windows.zip** to a new folder, and run **Update.cmd from that extraction**. The updater finds the installed Atlas and preserves its profile, settings and maps. Rebuildable caches are recreated as needed.
+## Install and play
 
-To migrate from launcher-integrated Atlas 1.2 or earlier, extract 1.3 into a new folder and run **Install.cmd** instead. Keep the older folder available for map import; do not uninstall it first because its uninstaller resets maps. Keep a full copy if you need to restore its legacy integration.
+1. Close the game and launcher. Extract the whole ZIP into a new permanent folder.
+2. Run **Install.cmd**. Select your Bloodborne **CUSA00207 1.09** game folder if asked.
+3. Open **HuntersAtlas.exe**. Hunter's Atlas is enabled under **Mods & patches**.
+4. Press **Play**, then **Continue** in the game. Press **M** to open the map.
 
-The ordinary Bloodborne desktop shortcut continues to open the game. If the imported preference had Atlas disabled, enable **Hunter’s Atlas** under **Mods & patches** before choosing **Play**. Then open the native in-game **Map** tile. The separate ordinary launcher may remain installed for stock play.
+Game files and saves are not included. Keep your existing save folder and select it
+in the launcher if it was not detected automatically. Installation does not change
+your game files. Extract updates to a new folder and run that folder's Install.cmd.
 
-## Recovery
+## Mouse and display
 
-Install and update operations print a recovery journal path. Close Atlas and the game, then run the included private Python interpreter and installer from the new Atlas package:
+For faster camera turning: **Inputs → Mouse look → Sensitivity**, then **Save**.
+The default is 1.0; try 2.0 and adjust to taste. Mouse-look emulates the right
+stick, so Bloodborne's maximum stick turn speed still applies.
 
-```text
-runtime\python\python.exe -I -B owned\installer.py --recover "JOURNAL"
-runtime\python\python.exe -I -B owned\installer.py --rollback "JOURNAL"
-```
+The map scales proportionally to the display and keeps its world coverage when
+the window is resized. Ultrawide and taller screens use a centered layout without
+stretching. Mouse-wheel, keyboard and controller zoom use matching scaled limits.
 
-Replace `JOURNAL` with the exact path printed by the operation. `--recover` reverses or completes an interrupted activation from its journal; `--rollback` restores the retained prior installation. Preserve the full previous Atlas folder when the old integration may be needed. Recovery does not restore old saves over current saves.
+## What's new
 
-**Uninstall.cmd** restores the previous desktop shortcut and leaves Atlas files, maps and settings in place. An external legacy hook left by an older 1.2 setup is outside the 1.3 uninstaller’s management.
+- All map shapes, outlines and decorative geometry are compiled once offline.
+- The game loads compact map data and draws it directly; no collision extraction
+  or map triangulation runs while playing.
+- Correct area names, live position, floors, pan/zoom and discovered-lamp travel.
+- Works independently of the version of any separately installed launcher.
 
-See [installation](INSTALL.md) for package steps and [compatibility](COMPATIBILITY.md) for the tested scope.
+Renderer checks covered 720p, 1080p, 1440p, 4K, 1920×1200, 3440×1440 and
+5120×1440, plus resizing and zoom. These are offscreen renderer checks; every
+resolution has not been tested through a live game's display mode switch.

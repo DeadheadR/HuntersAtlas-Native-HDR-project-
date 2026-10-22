@@ -118,7 +118,8 @@ def inspect_package(folder: str | os.PathLike[str], *, game_sha256: str | None =
         if game_sha256.casefold() not in {value.casefold() for value in supported_games}:
             raise AtlasManifestError('This Atlas package does not support the selected Bloodborne game build.')
         paths = {key: contract['paths'][key] for key in REQUIRED_PATHS}
-        if contract.get('generator') is None:
+        compiled = contract.get('manifest',{}).get('compact_maps',{}).get('format') == 'compiled-vector-v1'
+        if contract.get('generator') is None and not compiled:
             raise AtlasManifestError('Atlas package is missing its map preparation tool.')
         paths['generator'] = contract['generator']
         generated_ready, generated_message = _asset_readiness(contract, game_sha256)

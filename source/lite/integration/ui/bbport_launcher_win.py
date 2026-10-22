@@ -30,8 +30,12 @@ import zipfile
 
 FROZEN = getattr(sys, 'frozen', False)
 PORT_DIR = Path(sys.executable).resolve().parent if FROZEN else Path(__file__).resolve().parent.parent
+OWNED_ATLAS_ROOT = os.environ.get('BB_OWNED_ATLAS_ROOT', '')
+if OWNED_ATLAS_ROOT:
+    PORT_DIR = Path(os.environ['BB_OWNED_PORT_ROOT']).resolve(strict=True)
 sys.path.insert(0, str(PORT_DIR / 'scripts'))
 DATA_DIR = Path(os.environ.get('BB_DATA_DIR', PORT_DIR))
+FSR4_FOLDER = (DATA_DIR if OWNED_ATLAS_ROOT else PORT_DIR) / 'fsr4_shaders'
 # Co-op test build: its own settings, and no updates (a public release would replace it).
 COOP_TEST = False
 CONFIG_DIR = Path(os.environ.get('APPDATA', Path.home())) / ('bbport-launcher-coop' if COOP_TEST else 'bbport-launcher')
@@ -208,14 +212,15 @@ TWEAKS = [
     ('quit_to_desktop', ('Quit to Desktop in the title menu and in the System menu',
                          'Пункт «Выйти на рабочий стол» в главном меню и в меню «Система»'), True),
 ]
-INI_FLAGS = {'sharpen', 'object_motion', 'show_fps', *(k for k, _t, _o in EFFECTS + EXTRAS + CHEATS + TWEAKS)}
+INI_FLAGS = {'sharpen', 'object_motion', 'show_fps', 'frame_gen_fit_display', *(k for k, _t, _o in EFFECTS + EXTRAS + CHEATS + TWEAKS)}
 INI_DEFAULTS = {'upscaler': 'fsr4', 'preset': '1', 'sharpen': '1', 'sharpness': '0.50',
                 'object_motion': '1', 'show_fps': '1', 'output_res': '1920x1080', 'model_lod': '0',
                 'live_resolution': 'auto', 'hud_position': '100',
+                'frame_gen': 'off', 'frame_gen_multiplier': '2', 'frame_gen_fit_display': '0',
                 **{key: '1' if on else '0' for key, _t, on in EFFECTS + EXTRAS + CHEATS + TWEAKS}}
 APP_DEFAULTS = {'ui_language': '', 'game_dir': str(PORT_DIR.parent / 'CUSA03173'), 'user_dir': '', 'dlc_dir': '',
                 'mods_dir': '', 'mods_enabled': True, 'patches_dir': '',
-                'atlas_dir': '', 'atlas_enabled': False, 'atlas_npc_mode': 'all',
+                'atlas_dir': '', 'atlas_enabled': True, 'atlas_npc_mode': 'all',
                 'atlas_items_enabled': False, 'atlas_item_healing': True, 'atlas_item_insight': True,
                 'atlas_item_equipment': True, 'atlas_item_echoes': True,
                 'atlas_travel_enabled': False, 'atlas_fog_enabled': False, 'language': '1',
@@ -236,6 +241,14 @@ UPSCALERS = [('dlss', ('DLSS (NVIDIA GeForce RTX)',)),
              ('fsr3', ('FSR 3.1 (every GPU)', 'FSR 3.1 (любая видеокарта)')),
              ('taa', ('TAA (native resolution anti-aliasing)', 'TAA (нативное сглаживание)')),
              ('off', ('Off', 'Выключен'))]
+# Frames generated between two of the game's (vk_frame_generation.cpp).
+FRAME_GENERATION = [('off', ('Off', 'Выключена')),
+                    ('fsr3', ('AMD FSR 3.1 Frame Generation (any GPU)', 'AMD FSR 3.1 (любая видеокарта)')),
+                    ('dlss', ('NVIDIA DLSS Frame Generation (GeForce RTX 40/50)',
+                              'NVIDIA DLSS (GeForce RTX 40/50)'))]
+FRAME_GEN_MULTIPLIERS = [('2', ('2× (one generated frame)', '2× (один кадр)')),
+                         ('3', ('3× (DLSS on GeForce RTX 50)', '3× (DLSS на GeForce RTX 50)')),
+                         ('4', ('4× (DLSS on GeForce RTX 50)', '4× (DLSS на GeForce RTX 50)'))]
 PRESETS = [('0', ('Native AA (×1.0)',)), ('1', ('Quality (×1.5)',)), ('2', ('Balanced (×1.7)',)),
            ('3', ('Performance (×2)',)), ('4', ('Ultra Performance (×3)',))]
 OUTPUTS = [('1280x720', ('1280 × 720 (Steam Deck)',)), ('1920x1080', ('1920 × 1080',)),
@@ -290,7 +303,7 @@ def fsr4_files():
 
 
 def fsr4_missing():
-    folder = PORT_DIR / 'fsr4_shaders'
+    folder = FSR4_FOLDER
     return [name for name in fsr4_files() if not (folder / name).is_file() or not (folder / name).stat().st_size]
 
 
@@ -603,7 +616,7 @@ class Launcher:
         self.mod_order, self.mod_vars, self.patch_vars = [], {}, {}
         self.tracker = trophies.Tracker(self.trophy_dir())
         self.trophies_loaded, self.toasts = False, []
-        root.title('Bloodborne — bbport')
+        root.title("Hunter's Atlas 3.0")
         root.configure(bg=BG)
         self.dpi = root.winfo_fpixels('1i') / 96.0
         root.geometry(f'{self.px(1120)}x{self.px(740)}')
@@ -1012,6 +1025,26 @@ class Launcher:
         self.check(f, 'object_motion', 'ini', _('Object motion vectors', 'Векторы движения объектов'),
                    _('Less ghosting on characters, cloth and weapons; costs about 10% FPS.',
                      'Меньше гостинга на персонажах и одежде; стоит около 10% FPS.'))
+        self.section(f, _('Frame generation', 'Генерация кадров'))
+        self.row(f, _('Frame generation', 'Генерация кадров'),
+                 self.choice(f, 'frame_gen', 'ini', FRAME_GENERATION),
+                 _('Frames made between two of the game\'s: 60 FPS on screen becomes 120. Needs a display with '
+                   'that refresh rate (120 Hz or more at 60 FPS); it pauses when the display cannot show the extra '
+                   'frames. Adds a little input latency. Menus and movies are not generated. DLSS needs a GeForce '
+                   'RTX 40 or newer, otherwise FSR 3.1 is used.',
+                   'Кадры между двумя кадрами игры: 60 FPS на экране становятся 120. Нужен монитор с такой '
+                   'частотой (120 Гц и выше при 60 FPS); иначе генерация приостанавливается. Немного добавляет '
+                   'задержку ввода. Меню и ролики не генерируются. DLSS нужна GeForce RTX 40 или новее, иначе '
+                   'используется FSR 3.1.'))
+        self.row(f, _('Multiplier', 'Множитель'),
+                 self.choice(f, 'frame_gen_multiplier', 'ini', FRAME_GEN_MULTIPLIERS),
+                 _('FSR 3.1 makes one frame (2×); DLSS on a GeForce RTX 50 up to three (4×).',
+                   'FSR 3.1 делает один кадр (2×); DLSS на GeForce RTX 50 — до трёх (4×).'))
+        self.check(f, 'frame_gen_fit_display', 'ini', _('Fit to display refresh', 'Под частоту монитора'),
+                   _('On: no more frames than the display shows (an uncapped game gets fewer generated frames, and '
+                     'the GPU does less). Off: the multiplier as chosen.',
+                     'Вкл.: не больше кадров, чем показывает монитор (при снятом ограничении FPS генерируется меньше, '
+                     'видеокарта меньше нагружена). Выкл.: множитель как выбран.'))
         self.section(f, _('FSR 4 assets', 'Ассеты FSR 4'))
         self.fsr4_label = ttk.Label(f, text='', wraplength=self.px(640), justify='left')
         self.fsr4_label.grid(row=self.next_row(f), column=0, columnspan=2, sticky='w')
@@ -1356,10 +1389,8 @@ class Launcher:
         self.atlas_status.grid(row=self.next_row(f), column=0, columnspan=2, sticky='w', padx=(0, 0), pady=(4, 0))
         self.atlas_prepare_button = self.ttk.Button(
             f, text=_('Prepare Atlas maps'), command=self.prepare_atlas_maps, state='disabled')
-        self.atlas_prepare_button.grid(row=self.next_row(f), column=0, sticky='w', pady=(6, 0))
-        self.ttk.Button(f,text=_('Check Atlas updates','Проверить обновления Atlas'),
-                        command=lambda:self.install_atlas_update(VERSION,manual_check=True)).grid(
-            row=self.next_row(f),column=0,sticky='w',pady=(6,0))
+        self.atlas_prepare_button.grid_remove()
+
         self.atlas_progress = self.ttk.Progressbar(f, mode='indeterminate', length=self.px(360))
         self.atlas_progress.grid(row=self.next_row(f), column=0, columnspan=2, sticky='we', pady=(4, 0))
         self.atlas_progress.grid_remove()
@@ -1414,7 +1445,8 @@ class Launcher:
             return
         if package and package.generated_ready:
             state = _('Enabled') if enabled else _('Disabled; the stock runtime will be used.')
-            message = f"{_('Ready — Hunter\'s Atlas')} {package.display_version} {_('verified.')}. {state}"
+            ready_label = _("Ready — Hunter's Atlas")
+            message = f"{ready_label} {package.display_version} {_('verified.')}. {state}"
             style = 'Muted.TLabel'
             self.atlas_prepare_button.configure(state='disabled')
         elif package:
@@ -1428,7 +1460,7 @@ class Launcher:
             style = 'Warning.TLabel'
             self.atlas_prepare_button.configure(state='disabled')
         self.atlas_status.configure(text=message, style=style)
-        if package and not package.generated_ready and enabled and not self.process:
+        if False and package and not package.generated_ready and enabled and not self.process:
             attempt=(str(package.root),str(self.var('game_dir','app').get()))
             if attempt not in self.atlas_auto_attempts:
                 self.atlas_auto_attempts.add(attempt)
@@ -2067,15 +2099,15 @@ class Launcher:
         total, missing = len(fsr4_files()), len(fsr4_missing())
         self.fsr4_progress.configure(value=total - missing)
         self.fsr4_label.configure(
-            text=_('Installed: {} files in {}.', 'Установлены: {} файлов в {}.').format(total, PORT_DIR / 'fsr4_shaders')
+            text=_('Installed: {} files in {}.', 'Установлены: {} файлов в {}.').format(total, FSR4_FOLDER)
             if not missing else _('{} of {} files missing in {}.', 'Нет {} из {} файлов в {}.').format(
-                missing, total, PORT_DIR / 'fsr4_shaders'))
+                missing, total, FSR4_FOLDER))
         self.fsr4_button.configure(state='normal' if missing and not self.downloading else 'disabled')
 
     def download_fsr4(self):
         self.downloading = True
         self.fsr4_button.configure(state='disabled')
-        folder = PORT_DIR / 'fsr4_shaders'
+        folder = FSR4_FOLDER
 
         def work():
             error = None
@@ -2103,7 +2135,7 @@ class Launcher:
         if not hasattr(self, 'patches_frame'):
             return
         tk, ttk = self.tk, self.ttk
-        from mods import discover
+        from mods import discover, unrecognized
         from patches import external_patches
         for holder in (self.mods_frame, self.patches_frame):
             for widget in holder.winfo_children():
@@ -2131,6 +2163,10 @@ class Launcher:
             ttk.Label(self.mods_frame, text=_('Lower in the list loads later and wins conflicts.',
                                               'Ниже в списке — загружается позже и перекрывает.'),
                       style='Muted.TLabel').pack(anchor='w', pady=(4, 0))
+        # Folders that are not mods are named, with why, instead of left out silently.
+        for name, problem in unrecognized(root):
+            ttk.Label(self.mods_frame, text=_('Not loaded: {}: {}', 'Не загружен: {}: {}').format(name, problem),
+                      style='Muted.TLabel', wraplength=self.px(620), justify='left').pack(anchor='w', pady=(4, 0))
         chosen = load_json(DATA_DIR / 'patches.json', {})
         found = external_patches(Path(self.var('patches_dir', 'app').get() or DATA_DIR / 'patches'), PATCH_VERSION)
         old = {n: v.get() for n, v in self.patch_vars.items()}
@@ -2358,6 +2394,10 @@ class Launcher:
     # ---- updates -------------------------------------------------------------------------------
     def check_update(self, manual=False):
         """Helper thread: asks GitHub for the newest release and offers it when it is newer."""
+        if OWNED_ATLAS_ROOT:
+            if manual:
+                self.ui_calls.put(lambda:self.atlas_notice(_('Atlas owns this tested game runtime ({}). Install Atlas updates with Update.cmd; ordinary launcher updates are separate.').format(VERSION)))
+            return
         try:
             version, url, page = latest_release()
         except (OSError, ValueError, KeyError) as failure:
@@ -2394,6 +2434,8 @@ class Launcher:
             self.status.configure(text=text, fg=GOLD)
 
     def install_update(self, version, url, page):
+        if OWNED_ATLAS_ROOT:
+            return self.install_atlas_update(version)
         if (PORT_DIR / 'atlas-lite-install.json').is_file():
             return self.install_atlas_update(version)
         if self.process:
@@ -2459,6 +2501,10 @@ class Launcher:
             self.update_label.configure(text=text)
 
     def install_atlas_update(self,version,manual_check=False):
+        if OWNED_ATLAS_ROOT:
+            self.atlas_notice(_('Install a new Atlas package with its Update.cmd. Your maps and settings will be retained.'))
+            webbrowser.open('https://github.com/MikeTat1988/HuntersAtlas/releases')
+            return
         # The Update button is the user's request. All progress and failures stay inline.
         if self.process or self.downloading or self.atlas_generating:
             self.atlas_notice(_('Close the game and wait for map preparation before updating.'),True)
@@ -2521,6 +2567,17 @@ class Launcher:
 
     def shortcut(self):
         """Bloodborne.lnk on the desktop."""
+        if OWNED_ATLAS_ROOT:
+            import importlib.util
+            path = Path(OWNED_ATLAS_ROOT) / 'owned/installer.py'
+            spec = importlib.util.spec_from_file_location('atlas_shortcut_installer', path)
+            installer = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(installer)
+            root = Path(OWNED_ATLAS_ROOT)
+            desktop = Path(os.environ.get('USERPROFILE', Path.home())) / 'Desktop/Bloodborne.lnk'
+            installer.shortcut(desktop, root, root / 'state/installation/previous-shortcut.lnk')
+            self.messagebox.showinfo('Bloodborne', _('Shortcut created on the desktop.'))
+            return
         if FROZEN:
             target, arguments, icon = sys.executable, '', f'{sys.executable},0'
         else:  # a source tree: the launcher script with the windowless Python
@@ -2546,7 +2603,9 @@ class Launcher:
         if not configs:
             self.messagebox.showerror('Bloodborne', _('Steam was not found on this PC (or nobody has signed in to it yet).'))
             return
-        if FROZEN:
+        if OWNED_ATLAS_ROOT:
+            exe, options = Path(OWNED_ATLAS_ROOT) / 'HuntersAtlas.exe', '--play'
+        elif FROZEN:
             exe, options = PORT_DIR / 'Play Bloodborne.exe', ''
         else:
             pythonw = Path(sys.executable).with_name('pythonw.exe')
@@ -2569,7 +2628,8 @@ class Launcher:
             restart = True
         try:
             for config in configs:
-                bbport_steam.add_shortcut(config / 'shortcuts.vdf', 'Bloodborne', str(exe), str(PORT_DIR),
+                working = Path(OWNED_ATLAS_ROOT) if OWNED_ATLAS_ROOT else PORT_DIR
+                bbport_steam.add_shortcut(config / 'shortcuts.vdf', 'Bloodborne', str(exe), str(working),
                                           str(exe), options)
         except (OSError, ValueError) as error:
             self.messagebox.showerror('Bloodborne', _('Could not add the game to Steam: {}').format(error))
@@ -2719,6 +2779,8 @@ def main():
     settings = load_settings()
     LANG = settings.get('ui_language') or windows_language()
     if args[:1] == ['--install-update'] and len(args) == 3:
+        if OWNED_ATLAS_ROOT:
+            raise ValueError('Use Update.cmd from the new Atlas package.')
         sys.exit(install_update(args[1], args[2]))
     if FROZEN and UPDATE_DIR not in PORT_DIR.parents:
         shutil.rmtree(UPDATE_DIR, ignore_errors=True)  # what a finished update left behind
@@ -2732,7 +2794,15 @@ def main():
     import tkinter as tk
     from tkinter import filedialog, messagebox, ttk
     root = tk.Tk()
-    Launcher(root, tk, ttk, filedialog, messagebox)
+    launcher=Launcher(root, tk, ttk, filedialog, messagebox)
+    root.deiconify()
+    if OWNED_ATLAS_ROOT and '--atlas-ui-smoke' in args:
+        launcher.show('mods')
+        def audit_ui():
+            report={'window_state':root.state(),'window_viewable':bool(root.winfo_viewable()),'atlas_enabled':bool(launcher.var('atlas_enabled','app').get()),'atlas_status':str(launcher.atlas_status.cget('text'))}
+            (Path(OWNED_ATLAS_ROOT)/'state/ui-smoke.json').write_text(json.dumps(report,indent=2),encoding='utf-8')
+            root.destroy()
+        root.after(12000,audit_ui)
     root.mainloop()
 
 

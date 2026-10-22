@@ -47,6 +47,12 @@ def environment(core, contract, paths, inherited):
     env.setdefault('BB_GPU_USER_DIR',env['BB_USER_DIR'])
     system_root=Path(env.get('SystemRoot',r'C:\Windows'))
     env['PATH']=os.pathsep.join(map(str,(contract['root']/'bin',base/'bin',system_root/'System32',system_root)))
+
+    compact_root=contract["root"]/"maps-baked"
+    compact_index=contract["manifest"]["compact_maps"]["index_sha256"]
+    env.update(BB_ATLAS2_ENABLED="1",BB_ATLAS2_DIR=str(compact_root),BB_ATLAS2_INDEX_SHA256=compact_index,BB_ATLAS2_ASYNC_LOAD="1")
+    env.pop("BB_ATLAS2_REFERENCE_DIR",None)
+    env.pop("BB_ATLAS2_MEASURE",None)
     return env
 
 def main():

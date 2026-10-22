@@ -609,6 +609,12 @@ def game_environment(contract: dict[str, Any], profile: dict[str, Any],
         pad_file = qa_dir / "pad.txt"
         if pad_file.is_file():
             env["BB_PAD_FILE"] = str(pad_file)
+
+    compact_root=contract["root"]/"maps-baked"
+    compact_index=contract["manifest"]["compact_maps"]["index_sha256"]
+    env.update(BB_ATLAS2_ENABLED="1",BB_ATLAS2_DIR=str(compact_root),BB_ATLAS2_INDEX_SHA256=compact_index,BB_ATLAS2_ASYNC_LOAD="1")
+    env.pop("BB_ATLAS2_REFERENCE_DIR",None)
+    env.pop("BB_ATLAS2_MEASURE",None)
     return env
 
 
