@@ -1,4 +1,8 @@
 """Install/update the owned in-game runtime while retaining maps and preferences."""
+import sys
+
+sys.dont_write_bytecode = True
+
 import argparse
 import contextlib
 import ctypes
@@ -11,11 +15,9 @@ from pathlib import Path
 import shutil
 import stat
 import subprocess
-import sys
 import tempfile
 import uuid
 
-sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[1]
 
 

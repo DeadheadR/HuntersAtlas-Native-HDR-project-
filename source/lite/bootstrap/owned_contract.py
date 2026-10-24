@@ -6,7 +6,9 @@ its contents are now immutable files owned by the Atlas package.
 """
 from __future__ import annotations
 
+import importlib.util
 from pathlib import Path
+import re
 import stat
 from typing import Any
 
@@ -112,6 +114,22 @@ def load_contract(root: Path, config: dict[str, Any], core: Any) -> dict[str, An
             receipt.get("copy_sha256") != core.sha256_file(runner)):
         raise Error("run_lite source receipt does not match the owned run.py and Atlas copy.")
 
+    # -B prevents writes but Python can still leave caches from an earlier
+    # invocation without that flag. Discard only standard, source-backed caches;
+    # never whitelist their executable contents or accept orphaned bytecode.
+    generated_caches: set[Path] = set()
+
+    def generated_cache(path: Path) -> bool:
+        if (path.parent.name != "__pycache__" or
+                not re.fullmatch(r".+\.cpython-[0-9]+(?:\.opt-[012])?\.pyc", path.name)):
+            return False
+        try:
+            source = Path(importlib.util.source_from_cache(str(path)))
+        except ValueError:
+            return False
+        relative = source.relative_to(root).as_posix().casefold()
+        return own_files.get(relative) == source
+
     # A complete allowlist prevents a forgotten DLL, Python module or native
     # extension from silently changing the tested dependency closure.
     immutable_trees = ("bin", "bootstrap", "integration", "runtime", "tools", "owned")
@@ -123,9 +141,12 @@ def load_contract(root: Path, config: dict[str, Any], core: Any) -> dict[str, An
         for path in tree.rglob("*"):
             reject_reparse(path, "owned runtime tree")
             if path.is_file() and path.relative_to(root).as_posix().casefold() not in own_files:
-                raise Error(f"Owned runtime contains an unverified file: {path.relative_to(root)}.")
+                if generated_cache(path):
+                    generated_caches.add(path)
+                else:
+                    raise Error(f"Owned runtime contains an unverified file: {path.relative_to(root)}.")
     actual_base = {path.relative_to(base_root).as_posix().casefold()
-                   for path in base_root.rglob("*") if path.is_file()}
+                   for path in base_root.rglob("*") if path.is_file() and path not in generated_caches}
     if actual_base != set(base_files):
         raise Error("Owned port files do not exactly match dependencies.ordinary_port.files.")
 
@@ -204,6 +225,15 @@ def load_contract(root: Path, config: dict[str, Any], core: Any) -> dict[str, An
             for path in contents:
                 pinned(path.relative_to(root).as_posix(), f"paths.{key} file")
     generator = pinned(manifest["generator"], "generator") if manifest.get("generator") else None
+    # Finish all validation before changing anything. Removing these caches
+    # forces subsequent imports to use the verified source, even with -B.
+    for path in sorted(generated_caches):
+        reject_reparse(path, "generated Python cache")
+        try:
+            path.unlink(missing_ok=True)
+        except OSError as error:
+            raise Error(f"Could not clear generated Python cache: {path.relative_to(root)}. "
+                        "Close Atlas and check that its folder is writable.") from error
     return {"root": root, "config": config, "manifest": manifest, "own_files": own_files,
             "dependencies": deps, "base_root": base_root, "base_files": base_files,
             "base_bin_paths": [path for path in base_files.values()

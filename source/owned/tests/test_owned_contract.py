@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+from unittest import mock
 
 
 BOOTSTRAP = Path(__file__).resolve().parents[2] / "lite" / "bootstrap"
@@ -44,6 +45,7 @@ class OwnedContractTests(unittest.TestCase):
             "bootstrap/assets.py", "runtime/port/run.py", "runtime/port/scripts/prepare.py",
             "runtime/port/bin/base.dll", "runtime/python/python.exe", "runtime/python/pythonw.exe",
             "runtime/python/python310.dll", "runtime/python/Lib/__future__.py",
+            "runtime/python/Lib/collections/__init__.py",
             "integration/ui/bbport_launcher_win.py", "bin/bb-probe.exe",
             "bin/bb-gpu-capabilities.exe", "bin/render.dll", "tools/prepare.py",
             "assets.atlaslite",
@@ -125,12 +127,64 @@ class OwnedContractTests(unittest.TestCase):
 
     def test_unlisted_loadable_and_nonloadable_runtime_files_are_rejected(self):
         for name in ("runtime/python/malicious.pyd", "runtime/port/scripts/extra.py", "bin/extra.dll",
-                     "integration/ui/extra.py", "bootstrap/__pycache__/entry.cpython-310.pyc"):
+                     "integration/ui/extra.py", "bootstrap/__pycache__/orphan.cpython-310.pyc",
+                     "bootstrap/entry.pyc", "bootstrap/__pycache__/entry.cpython-310.py",
+                     "bootstrap/__pycache__/entry.invalid.pyc"):
             with self.subTest(name=name):
                 path = self.write(name, b"unlisted", fixed=False)
                 with self.assertRaisesRegex(core.BootstrapError, "unverified file"):
                     self.load()
                 path.unlink()
+
+    def test_source_backed_python_caches_are_removed_and_repeated_launches_validate(self):
+        names = ("runtime/python/Lib/__pycache__/__future__.cpython-310.pyc",
+                 "runtime/python/Lib/collections/__pycache__/__init__.cpython-310.pyc",
+                 "runtime/port/scripts/__pycache__/prepare.cpython-310.opt-1.pyc",
+                 "bootstrap/__pycache__/entry.cpython-310.pyc",
+                 "integration/ui/__pycache__/bbport_launcher_win.cpython-310.pyc")
+        # Untrusted bytecode is discarded without loading or pinning it.
+        caches = [self.write(name, b"stale bytecode", fixed=False) for name in names]
+        fixed_before = {name: sha(path) for name, path in self.fixed.items()}
+        self.assertTrue(self.load()["owned_runtime"])
+        self.assertTrue(all(not path.exists() for path in caches))
+        self.assertEqual({name: sha(path) for name, path in self.fixed.items()}, fixed_before)
+        self.assertTrue(self.load()["owned_runtime"])
+
+    def test_cache_recovery_does_not_hide_modified_source_or_unlisted_files(self):
+        cache = self.write("bootstrap/__pycache__/entry.cpython-310.pyc", b"cache", fixed=False)
+        source = self.root / "bootstrap/entry.py"
+        original = source.read_bytes()
+        source.write_bytes(b"modified source")
+        with self.assertRaisesRegex(core.BootstrapError, "SHA-256"):
+            self.load()
+        self.assertTrue(cache.exists())
+        source.write_bytes(original)
+        self.write("runtime/port/unexpected.dll", b"unlisted", fixed=False)
+        with self.assertRaisesRegex(core.BootstrapError, "unverified file"):
+            self.load()
+        self.assertTrue(cache.exists())
+
+    def test_cache_removal_failure_reports_a_writable_folder_error(self):
+        self.write("bootstrap/__pycache__/entry.cpython-310.pyc", b"cache", fixed=False)
+        with mock.patch.object(Path, "unlink", side_effect=PermissionError("locked")):
+            with self.assertRaisesRegex(core.BootstrapError, "folder is writable"):
+                self.load()
+
+    def test_cache_recovery_rejects_reparse_points(self):
+        cache = self.write("bootstrap/__pycache__/entry.cpython-310.pyc", b"cache", fixed=False)
+        original_lstat = Path.lstat
+
+        def reparse_cache(path):
+            if path == cache:
+                info = original_lstat(path)
+                return type("LinkedCache", (), {"st_mode": info.st_mode,
+                            "st_file_attributes": 0x400})()
+            return original_lstat(path)
+
+        with mock.patch.object(Path, "lstat", reparse_cache):
+            with self.assertRaisesRegex(core.BootstrapError, "reparse point"):
+                self.load()
+        self.assertTrue(cache.exists())
 
     def test_external_root_and_relative_traversal_are_rejected_even_when_metadata_is_rehashed(self):
         for root in (str(self.external), "../../Upstream launcher", "runtime/port/../port"):

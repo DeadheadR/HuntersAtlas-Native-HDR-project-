@@ -1,12 +1,13 @@
 """Stable entry point for the independently installed, in-game Atlas runtime."""
+import sys
+
+sys.dont_write_bytecode = True
+
 import importlib.util
 import json
 import os
 from pathlib import Path
 import runpy
-import sys
-
-sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[1]
 WINDOWED = sys.stdout is None
 
