@@ -1,26 +1,23 @@
 # Compatibility
 
-Windows 10/11 x64. Verified game: CUSA00207 1.09.
-Included Windows runtime: 1.9. A separate launcher installation is not required.
+Windows 10/11 x64; verified game **CUSA00207 1.09**. Guarded adapters refuse
+unsupported or changed game executables.
 
-## Mouse and display
+| Atlas 3.1 download | Included launcher/runtime | Atlas controls |
+| --- | --- | --- |
+| Windows | Bloodborne for Windows v1.9, Supermedo | Mods & patches |
+| Lantern | Modified Lantern Engine v0.9.37, Awakenchan | Settings → Hunter's Atlas 3.1 |
 
-For faster camera turning: **Inputs → Mouse look → Sensitivity**, then **Save**.
-The default is 1.0; try 2.0 and adjust to taste. Mouse-look emulates the right
-stick, so Bloodborne's maximum stick turn speed still applies.
+Each ZIP includes its runtime; a separate launcher installation is not required.
+Extract editions into separate folders and keep their files together. Lantern's
+ordinary Mods list does not need a separate Atlas entry. Stock engine updates
+are disabled in the Atlas Lantern edition to preserve integration. Update using
+a complete matching Atlas ZIP.
 
-The map scales proportionally to the display and keeps its world coverage when
-the window is resized. Ultrawide and taller screens use a centered layout without
-stretching. Mouse-wheel, keyboard and controller zoom use matching scaled limits.
+The map uses compiled geometry, a textured background and scaled controls.
+Live viewport checks covered 1920x1080, 2560x1440, 3840x2160 and 3440x1440.
+Mouse-wheel, keyboard and controller zoom share scaled limits.
+See [verification](QA.md) and [installation](INSTALL-LAUNCHERS.md).
 
-## What's new
-
-- All map shapes, outlines and decorative geometry are compiled once offline.
-- The game loads compact map data and draws it directly; no collision extraction
-  or map triangulation runs while playing.
-- Correct area names, live position, floors, pan/zoom and discovered-lamp travel.
-- Works independently of the version of any separately installed launcher.
-
-Renderer checks covered 720p, 1080p, 1440p, 4K, 1920×1200, 3440×1440 and
-5120×1440, plus resizing and zoom. These are offscreen renderer checks; every
-resolution has not been tested through a live game's display mode switch.
+Lantern Engine by Awaken (https://github.com/Awakenchan/LanternEngine).
+This is a modified Hunter's Atlas build, not an official Lantern Engine release.

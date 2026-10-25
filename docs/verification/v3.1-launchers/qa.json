@@ -1,0 +1,78 @@
+{
+  "atlas_version": "3.1",
+  "archives": {
+    "lantern": {
+      "bytes": 369898598,
+      "files": 6809,
+      "manifest_files": 6808,
+      "sha256": "5c31673e8993d91727763b320678dbe5429dfb8b7a575e6d9458c1647822595f"
+    },
+    "windows19": {
+      "bytes": 295166474,
+      "files": 2953,
+      "manifest_files": 2951,
+      "sha256": "170359ba3e92df7e08dbbdd5b163283894d4b20e1277319283bf00a1f29c4793"
+    }
+  },
+  "identical_map_files": 321,
+  "package_checks_passed": true,
+  "launcher_contract_tests": 9,
+  "windows_owned_contract": true,
+  "protected_files": {
+    "pass_all": true,
+    "protected_files": 3070,
+    "changed_files": []
+  },
+  "live_viewports": [
+    [
+      1920,
+      1080
+    ],
+    [
+      2560,
+      1440
+    ],
+    [
+      3840,
+      2160
+    ],
+    [
+      3440,
+      1440
+    ]
+  ],
+  "windows_gameplay": "Copied save loaded in Hunters Dream; native map and viewport checks passed before final shared outline color/width adjustment",
+  "lantern_gameplay": {
+    "copied_save": true,
+    "travel_status": 3,
+    "arrival_block": 402653184,
+    "arrival_xyz": [
+      17.579999923706055,
+      -9.509977340698242,
+      102.6500015258789
+    ],
+    "mouse_wheel": {
+      "pass": true,
+      "before_zoom": 13.5,
+      "after_zoom": 16.200000762939453,
+      "player_stationary": true
+    },
+    "mouse_lamp_selection": {
+      "passed": true,
+      "destination": 7,
+      "dialog": [
+        697.5,
+        414.0,
+        525.0,
+        252.0
+      ]
+    },
+    "clean_exit_code": 0
+  },
+  "screenshots": {
+    "cathedral": "Final native framebuffer after actual lamp travel",
+    "woods": "Final native framebuffer using area preview",
+    "dream": "Final native framebuffer using area preview"
+  },
+  "limits": "Local NVIDIA hardware only; Woods area preview is not a gameplay traversal; original offscreen receipts are historical"
+}

@@ -1,47 +1,63 @@
 # Hunter's Atlas 3.1
 
-[Download the Windows ZIP](https://github.com/MikeTat1988/HuntersAtlas/releases/download/v3.1/Hunters-Atlas-3.1-Windows.zip)
+Choose the ZIP for the launcher you want:
 
-All 16 supported areas are precompiled and included. Continuous paths use
-game-authored navigation geometry, with illustrated surroundings, a separate
-legend and player-height focus for overlapping passages. No map generation,
-compiler or separately installed launcher is needed to play. Atlas includes its
-own Windows runtime, Python and required DLLs.
+| Download | Included launcher |
+| --- | --- |
+| [**Atlas 3.1 — Windows**](https://github.com/MikeTat1988/HuntersAtlas/releases/download/v3.1-launchers/Hunters-Atlas-3.1-Windows.zip) | Bloodborne for Windows v1.9 (Supermedo) |
+| [**Atlas 3.1 — Lantern**](https://github.com/MikeTat1988/HuntersAtlas/releases/download/v3.1-launchers/Hunters-Atlas-3.1-Lantern.zip) | Atlas edition based on Awakenchan's Lantern Engine v0.9.37 |
 
-## Install and play
+Both include the same 16 illustrated maps, live position, navigation markers,
+pan/zoom, player-height passage views and discovered-lamp travel. Each ZIP
+contains its own launcher and runtime. Your existing Atlas installation can stay
+in place.
 
-1. Close the game and launcher. Extract the whole Windows ZIP into a new permanent folder.
-2. Run **Install.cmd**. Select your **CUSA00207 Bloodborne 1.09** folder if asked.
-3. Open **HuntersAtlas.exe**. Atlas is enabled under **Mods & patches**.
-4. Press **Play**, then **Continue**. Press **M** to open the map.
+## Install
 
-Keep/select your existing save folder in the launcher. Game files, saves and
-personal profiles are not included in the download. Installation does not
-overwrite your game files. Extract updates into a new folder and run Install.cmd.
+1. Close the game and launchers. Extract the whole ZIP into a **new folder**.
+2. Run **Install.cmd** and select your **CUSA00207 Bloodborne 1.09** game folder.
+3. Select your existing **save folder containing `savedata`** and keep a backup.
+4. Enable Atlas, then **Play → Continue**:
+   - **Windows:** **Mods & patches → Hunter's Atlas**.
+   - **Lantern:** **Settings → Hunter's Atlas 3.1 → Enable Hunter's Atlas**.
+     Atlas is integrated into this edition; a separate entry in the ordinary
+     Mods list is not required.
+5. Open the in-game menu and select **Map**, or press **M**. For travel, select
+   an eligible discovered lamp and confirm **Travel**.
 
-## Map and controls
+[Full installation and update guide](docs/INSTALL-LAUNCHERS.md).
+Game files, saves and personal launcher profiles are supplied separately.
 
-- Ordinary slopes remain continuous. Auto follows player height at actual
-  overlapping passages; Upper/Lower offer local passage overrides.
-- Mouse wheel, keyboard **+ / -** and mapped controller **RT / LT** zoom use
-  the same resolution-scaled limits. Pan with mouse drag or the right stick.
-- Resizing preserves world coverage. Taller and ultrawide screens keep a
-  centered, proportionally scaled layout without stretching.
-- For faster mouse-look: **Inputs → Mouse look → Sensitivity → Save**.
-  Try 2.0 instead of 1.0. Right-stick emulation retains the game's turn-speed limit.
+## Updated map appearance
 
-The drawings are decorative context, not surveyed building/tree positions.
-The October launcher cache-recovery fix and runtime integrity checks are retained.
+The center uses the map's background artwork instead of an opaque black block.
+Paths use thin warm-toned edges, with a separate legend and proportionally
+scaled controls.
 
-## Verification
+**Cathedral Ward**
 
-The illustrated runtime passed 28 native offscreen cases across 1280×720,
-1920×1080, 2560×1440, 3840×2160, 1920×1200, 3440×1440 and 5120×1440.
-Each case checked zoom controls and limits, live resize coverage, canvas bounds,
-legend alignment and visible framebuffer output. All 16 maps also passed native
-render and private visual review. Test reports accompany the release.
+![Cathedral Ward map with the updated Atlas 3.1 appearance](examples/cathedral-ward-map.png)
 
-These checks do not certify every live display/GPU combination or every player-only
-roof, ladder, drop or dynamic door. See [QA](docs/QA.md) and [release notes](docs/releases/v3.1.md).
+**Forbidden Woods**
 
-**Atlas 3.1 is supported. Earlier versions are legacy and unsupported.**
+![Forbidden Woods map with the updated Atlas 3.1 appearance](examples/forbidden-woods-map.png)
+
+The surrounding illustrations are decorative context. Navigation paths use
+game-authored geometry; ordinary slopes remain continuous and actual overlapping
+passages follow player height. Upper/Lower provide local passage overrides.
+
+## Controls and updates
+
+- Zoom with the mouse wheel, **+ / -**, or mapped controller **RT / LT**.
+- Pan by dragging or using the right stick. **Home** recenters the map.
+- Extract complete Atlas updates into a new folder and select the same game and
+  save folders. Keep the Windows and Lantern editions in separate folders.
+- The Lantern edition protects its modified Atlas runtime from stock engine
+  replacement. Use a complete matching Atlas ZIP when updating it.
+
+See [verification](docs/QA.md), [compatibility](docs/COMPATIBILITY.md), and the
+[separate Windows/Lantern build commands](source/launchers/README.md).
+
+Lantern Engine by Awaken (https://github.com/Awakenchan/LanternEngine).
+The Lantern edition is modified for Hunter's Atlas and is not an official
+Lantern Engine release.

@@ -1,0 +1,13 @@
+{
+  "python_exe": "C:/Path/To/Python/python.exe",
+  "msys_root": "C:/msys64",
+  "dotnet": "C:/Program Files/dotnet/dotnet.exe",
+  "jobs": 4,
+  "windows_seed_zip": "D:/BuildInputs/Hunters-Atlas-3.1-Windows.zip",
+  "windows_seed_sha256": "62b44d98825e09cecb52eaf91995249f5ffa963789e75385d1ee5f17bb1f253f",
+  "windows_base_build": "D:/BuildInputs/windows19-native-build",
+  "windows_link_arguments": "D:/BuildInputs/windows19-link-arguments.json",
+  "lantern_source_root": ".local/upstream/LanternEngine-0.9.37",
+  "lantern_binary_zip": "D:/BuildInputs/LanternEngine-v0.9.37-win64.zip",
+  "lantern_binary_sha256": "0982583284a5ea3d28028fa188db5b025134ef52b3d320440e99d2119e6b9e4e"
+}

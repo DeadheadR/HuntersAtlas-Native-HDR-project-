@@ -1,33 +1,22 @@
-# Release procedure
+# Atlas 3.1 release procedure
 
-Releases use version tags (`v1.0`, `v1.2`, …), a short changelog, a player ZIP,
-corresponding source ZIP and SHA-256 checksums. GitHub retains older releases.
-The main README links to `/releases/latest`; the 1.2 release is marked Latest
-when published. Existing tags/assets are never replaced.
+The public product remains Atlas 3.1. This update uses immutable tag
+v3.1-launchers, preserving the original v3.1 tag and assets.
 
-## Prepare locally
+1. Build with Build-Windows.cmd and Build-Lantern.cmd using the pinned inputs
+   documented in source/launchers/README.md.
+2. Verify both archives, shared map hashes, native/launcher contracts and affected
+   live game behavior. Recheck protected saves and prior installations.
+3. Update installation, compatibility, QA and release notes. Capture actual map
+   screenshots and bind receipts to exact archives.
+4. Stage only reviewed files. Exclude build outputs, saves, profiles, caches,
+   secrets and unrelated local changes.
+5. After owner authorization, verify remote main's expected parent, commit and
+   push reviewed changes. Create a draft release titled Hunter's Atlas 3.1 under
+   v3.1-launchers, using v3.1-launchers.md as its body.
+6. Attach both player ZIPs, corresponding source, installation guide, QA receipt
+   and SHA-256 checksums. Verify uploaded digests, publish and mark Latest.
+   Check public links, screenshots and preservation of previous releases.
 
-1. Update product version, changelog, installation/compatibility docs and release notes.
-2. Assemble verified native adapters with `source/lite/build_auto_update_release.py
-   --release --version 1.2`, the exact native build receipts, corresponding sources,
-   reviewed rebuild seed and private catalog signing key. Never include the key.
-3. Check package versions, signatures, archive CRCs, source correspondence,
-   unchanged native runtime hashes and absence of saves/game data/private files.
-4. Exercise installation and the launcher Ready state on a disposable copy.
-   Reuse existing gameplay/update evidence when runtime and relevant program
-   files have not changed. Repeat affected checks after functional changes.
-5. Keep generated binaries, tools, local paths and QA copies outside Git.
-   Show the owner the exact release notes and publication layout for approval.
-
-## Publish after owner approval
-
-1. Verify remote `main` still has the expected reviewed parent. Commit the reviewed
-   changes, push that commit to `main`, and create/push annotated tag `v1.2`.
-2. Create release **Hunter’s Atlas 1.2 — installation fixes and reliable rebuild progress** from that tag. Use `docs/releases/v1.2.md` as its body.
-3. Attach `Hunters-Atlas-1.2.zip`, `Hunters-Atlas-Source-1.2.zip` and
-   `SHA256SUMS.txt`. Mark the release Latest and publish it as a normal release.
-4. Verify the public Latest link, both downloads, their digests, screenshot and
-   preserved v1.0 release. The new screenshot is stored in `examples/launcher-settings.png`
-   and the release notes reference its immutable `v1.2` URL.
-
-No GitHub writes, commits, tags or pushes are part of local preparation.
+Never replace an existing release asset or move an existing tag. Player build
+commands do not publish a release or modify an installed launcher.

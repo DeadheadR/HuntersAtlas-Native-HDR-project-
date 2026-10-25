@@ -609,6 +609,9 @@ void Draw() {
     ImGui::Begin("Hunter's Atlas##map",nullptr,ImGuiWindowFlags_NoDecoration|ImGuiWindowFlags_NoMove|ImGuiWindowFlags_NoSavedSettings|ImGuiWindowFlags_NoBringToFrontOnFocus);
     const ImVec2 screen=ImGui::GetWindowPos(),full=ImGui::GetWindowSize();auto* draw=ImGui::GetWindowDrawList();
     const ImU32 paper=IM_COL32(223,214,187,255),muted=IM_COL32(185,180,161,255);
+    // Match the dark gray ground of background.bbra across both launcher editions,
+    // including the full viewport and any artwork fallback or aspect-ratio gutter.
+    draw->AddRectFilled(screen,ImVec2(screen.x+full.x,screen.y+full.y),IM_COL32(23,23,22,255));
     BbMapArt::DrawBackground(draw,screen,ImVec2(screen.x+full.x,screen.y+full.y));
     const BbAtlasStyle::Layout layout(full.x,full.y,screen.x,screen.y);
     auto at=[&](float x,float y){const auto p=layout.At(x,y);return ImVec2(p.x,p.z);};
@@ -648,7 +651,7 @@ void Draw() {
     const auto canvas=layout.Canvas();
     const ImVec2 origin(canvas.x,canvas.y),canvas_size(canvas.w,canvas.h);
     draw->PushClipRect(origin,ImVec2(origin.x+canvas_size.x,origin.y+canvas_size.y),true);
-    if(illustrated)draw->AddRectFilled(origin,ImVec2(origin.x+canvas_size.x,origin.y+canvas_size.y),IM_COL32(0,0,0,255));
+    // Unoccupied illustrated-map space reveals the same background painting.
     ImGui::SetCursorScreenPos(origin);ImGui::InvisibleButton("atlas-canvas",canvas_size,ImGuiButtonFlags_MouseButtonLeft);
     const bool hovered=ImGui::IsItemHovered();const ImVec2 canvas_center(origin.x+canvas_size.x*.5f,origin.y+canvas_size.y*.5f);
     if(ImGui::IsMouseClicked(ImGuiMouseButton_Left))map_dragged=false;

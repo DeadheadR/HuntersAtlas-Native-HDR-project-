@@ -66,22 +66,23 @@ void Callback(const ImDrawList*,const ImDrawCmd* command){auto start=Clock::now(
  Constants c{{2*frame.zoom/size.x,2*frame.zoom/size.y,2*(frame.center.x-frame.x*frame.zoom-pos.x)/size.x-1,2*(frame.center.y+frame.z*frame.zoom-pos.y)/size.y-1},{(area->bounds[0]+area->bounds[2])*.5f,(area->bounds[1]+area->bounds[3])*.5f,std::max(area->bounds[2]-area->bounds[0],area->bounds[3]-area->bounds[1]),0},{},{2/size.x,2/size.y,0,0}};
  if(area->illustrated){
   auto& n=*area->illustrated;Upload(illustrated_gpu,n.buffers,area->serial);auto cmd=state->CommandBuffer;draw_calls=0;
-  RenderMesh(cmd,n.fringe,illustrated_gpu,c,3,{.22f,.29f,.16f,1});
+  // The old world-width green fringe read as a heavy border at close zoom.
+  // Keep the source footprint and use a restrained screen-width warm ink edge.
   RenderMesh(cmd,n.ground,illustrated_gpu,c,3,{.77f,.68f,.48f,1});
-  RenderMesh(cmd,n.outline,illustrated_gpu,c,2,{.20f,.25f,.14f,1},std::clamp(.8f*frame.scale,.7f,2.5f));
+  RenderMesh(cmd,n.outline,illustrated_gpu,c,2,{.30f,.25f,.18f,.92f},std::clamp(.55f*frame.scale,.55f,1.65f));
   if(forest&&urban&&forest->Status==ImTextureStatus_OK&&urban->Status==ImTextureStatus_OK)RenderMesh(cmd,n.art,illustrated_gpu,c,n.texture=="urban-atlas.bbra"?5:4,{.88f,.90f,.85f,.95f});
   for(size_t k=0;k<n.crossings.size();++k){const auto& p=n.crossings[k];bool lower=LowerPassage(k);
    auto any=[&](const Mesh& m){if(!frame.fog)return m.count>0;for(const auto& g:m.groups)if(Allowed(g))return true;return false;};
    int sheet=PassageSheet(k);
    if(sheet>=0){
     if(!any(p.sheets[sheet].floor)){sheet=-1;for(size_t i=0;i<p.sheets.size();++i)if(any(p.sheets[i].floor)){sheet=int(i);break;}}
-    if(sheet>=0){RenderMesh(cmd,p.sheets[sheet].edges,illustrated_gpu,c,2,{0,0,0,1},std::clamp(4.f*frame.scale,3.f,12.f));RenderMesh(cmd,p.sheets[sheet].floor,illustrated_gpu,c,3,{.80f,.71f,.51f,1});continue;}
+    if(sheet>=0){RenderMesh(cmd,p.sheets[sheet].edges,illustrated_gpu,c,2,{.23f,.20f,.16f,.94f},std::clamp(frame.scale,.75f,3.f));RenderMesh(cmd,p.sheets[sheet].floor,illustrated_gpu,c,3,{.80f,.71f,.51f,1});continue;}
    }
    if(!any(lower?p.lower:p.upper)&&any(lower?p.upper:p.lower))lower=!lower;
    // The selected passage occludes underlying geometry only at its real footprint.
    // A connected overlap region can contain unrelated routes: never erase it wholesale.
-   RenderMesh(cmd,lower?p.lowerEdges:p.upperEdges,illustrated_gpu,c,2,{0,0,0,1},std::clamp(4.f*frame.scale,3.f,12.f));
-   RenderMesh(cmd,lower?p.lower:p.upper,illustrated_gpu,c,3,lower?std::array<float,4>{.64f,.70f,.60f,1}:std::array<float,4>{.84f,.73f,.50f,1});
+   RenderMesh(cmd,lower?p.lowerEdges:p.upperEdges,illustrated_gpu,c,2,{.23f,.20f,.16f,.94f},std::clamp(frame.scale,.75f,3.f));
+   RenderMesh(cmd,lower?p.lower:p.upper,illustrated_gpu,c,3,lower?std::array<float,4>{.64f,.58f,.46f,1}:std::array<float,4>{.84f,.73f,.50f,1});
   }
   callback_ms=std::chrono::duration<double,std::milli>(Clock::now()-start).count();return;
  }
