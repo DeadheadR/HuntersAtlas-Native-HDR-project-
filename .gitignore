@@ -10,3 +10,9 @@
 /source/native/out/
 **/.pytest_cache/
 /user/
+/source/illustrated/work/
+/source/illustrated/reports/
+/source/illustrated/build/
+/source/illustrated/maps-baked/
+/source/illustrated/native-art/
+/source/illustrated/assets/m*/

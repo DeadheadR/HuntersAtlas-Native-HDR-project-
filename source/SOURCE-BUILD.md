@@ -1,4 +1,14 @@
-# Hunter’s Atlas 1.1 source and build guide
+# Hunter's Atlas 3.1 source and build guide
+
+For the current illustrated renderer and offline pipeline, start with
+[source/compact](compact/README.md) and [source/illustrated](illustrated/README.md).
+The corresponding Source ZIP retains the Windows 1.9 native baseline and dependency
+archives matching the player proof. Apply the supplied renderer integration to that
+baseline; the player ZIP itself requires no compiler or map generation.
+
+The adapter/catalog recipes below are historical build context for earlier editions,
+not the release-3.1 packaging command. Do not substitute their older upstream identity
+for the pinned Windows 1.9 baseline in the current native-build proof.
 
 This guide describes the source available in this repository. Players use the prepared Atlas ZIP and do not need Python, a compiler, or the developer dependencies below. A rebuild is not guaranteed to produce byte-identical executables.
 

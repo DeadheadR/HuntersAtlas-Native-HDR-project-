@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "zip_sha256": "62b44d98825e09cecb52eaf91995249f5ffa963789e75385d1ee5f17bb1f253f",
+  "installer_exit_code": 0,
+  "installer_stderr_empty": true,
+  "installer_user_dir_isolated": true,
+  "profile_source_explicit_empty_json": true,
+  "game_files_changed_per_install_receipt": false,
+  "ui_exit_code": 0,
+  "ui_smoke": {
+    "window_state": "normal",
+    "window_viewable": true,
+    "atlas_enabled": true,
+    "atlas_status": "Ready \u2014 Hunter's Atlas 3.1 verified.. Enabled"
+  },
+  "ui_process_closed": true,
+  "save_tree_unchanged": true,
+  "actual_gameplay_claimed": false
+}

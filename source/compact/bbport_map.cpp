@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #include "bbport_map.h"
+#include "illustrated_legend.h"
+namespace BbMapStatic {bool Illustrated();bool PassageMarkerVisible(float,float,float);}
 #include "bbport_map_static.h"
-#include "../../../atlas2/measure.h"
+#include "../atlas2/measure.h"
 #include "bbport_map_art.h"
 #include "bbport_atlas_style.h"
 #include "bbport_atlas_interiors.h"
@@ -10,8 +12,8 @@
 #include "bbport_map_features.h"
 #include "bbport_atlas_menu.h"
 #include "bbport_atlas_paths.h"
-#include "../../src/runtime_map.h"
-#include "../../src/runtime_menu_sound.h"
+#include "../native/src/runtime_map.h"
+#include "../native/src/runtime_menu_sound.h"
 #include "imgui.h"
 #include <SDL3/SDL.h>
 #include <nlohmann/json.hpp>
@@ -565,6 +567,7 @@ void Settings() {
     ImGui::TextWrapped("Select Map in the game's quick menu, or click its fourth tile. Back returns to the same menu. Keyboard and controller shortcuts are optional.");
     if(!atlas_error.empty())ImGui::TextWrapped("Map data unavailable: %s",atlas_error.c_str());
 }
+void PreviewSetView(float x,float z,float normalizedZoom){cx=x;cz=z;zoom=normalizedZoom*MapUiScale();zoom_ui_scale=MapUiScale();follow=false;}
 void SetTitleFont(ImFont* font){title_font=font;}
 ImFont* TitleFont(){return title_font?title_font:ImGui::GetFont();}
 void Draw() {
@@ -615,8 +618,8 @@ void Draw() {
     // Frame details remain decoration; no semantic map geometry is created.
     for(float x:{10.f,1270.f})for(float y:{8.f,710.f}){const float sx=x<640?1.f:-1.f,sy=y<360?1.f:-1.f;draw->AddBezierCubic(at(x,y+sy*42),at(x+sx*3,y+sy*4),at(x+sx*24,y+sy*26),at(x+sx*42,y),rule,.7f*scale);ornament(x+sx*16,y+sy*15,4,rule);}
     const bool available=selected>=0&&Load(areas[selected])&&(!preview_active?location.valid&&current==selected:true);
-    const std::string title=available?(preview_active?areas[selected].name:LocationTitle(areas[selected])):(location.valid?"Location unavailable":"Awaiting your location");
-    const std::string subtitle=available?(preview_active&&selected_destination>=0?destinations[selected_destination].name:LocationSubtitle(areas[selected])):std::string{};
+    const std::string title=std::getenv("BB_ATLAS_REVIEW_SAFE")&&available?areas[selected].name:available?(preview_active?areas[selected].name:LocationTitle(areas[selected])):(location.valid?"Location unavailable":"Awaiting your location");
+    const std::string subtitle=std::getenv("BB_ATLAS_REVIEW_SAFE")?std::string{}:available?(preview_active&&selected_destination>=0?destinations[selected_destination].name:LocationSubtitle(areas[selected])):std::string{};
     ImFont* font=title_font?title_font:ImGui::GetFont();
     // Fit the actual UTF-8 string, then align visible glyph bounds rather than
     // assuming a font's nominal point size equals its cap height.
@@ -641,9 +644,11 @@ void Draw() {
     draw->AddLine(at(320,BbAtlasStyle::Layout::header_rule),at(960,BbAtlasStyle::Layout::header_rule),rule,.8f*scale);
     for(float x:{336.f,640.f,944.f})ornament(x,BbAtlasStyle::Layout::header_rule,x==640?5.f:3.f,rule);
     if(!subtitle.empty())centered(subtitle,BbAtlasStyle::Layout::subtitle_top,BbAtlasStyle::Layout::subtitle_size,BbAtlasStyle::Layout::subtitle_min,BbAtlasStyle::Layout::subtitle_width,BbAtlasStyle::Layout::subtitle_region_h,muted);
+    const bool illustrated=BbMapStatic::Illustrated();
     const auto canvas=layout.Canvas();
     const ImVec2 origin(canvas.x,canvas.y),canvas_size(canvas.w,canvas.h);
     draw->PushClipRect(origin,ImVec2(origin.x+canvas_size.x,origin.y+canvas_size.y),true);
+    if(illustrated)draw->AddRectFilled(origin,ImVec2(origin.x+canvas_size.x,origin.y+canvas_size.y),IM_COL32(0,0,0,255));
     ImGui::SetCursorScreenPos(origin);ImGui::InvisibleButton("atlas-canvas",canvas_size,ImGuiButtonFlags_MouseButtonLeft);
     const bool hovered=ImGui::IsItemHovered();const ImVec2 canvas_center(origin.x+canvas_size.x*.5f,origin.y+canvas_size.y*.5f);
     if(ImGui::IsMouseClicked(ImGuiMouseButton_Left))map_dragged=false;
@@ -768,12 +773,13 @@ void Draw() {
         }
         if(BbMapStatic::Enabled()&&BbMapStatic::Mode()!=1)BbMapStatic::Draw(draw,a.id,active,canvas_center,canvas_size,cx,cz,zoom,BbMapStatic::Mode()==2?.5f:1.f,elevation_shading,scale);
         const float marker_height=active>=0?a.layers[active].span:6.0f;
-        auto marker=[&](float x,float y,float z,const std::string& kind,const std::string& name){const auto p=project(x,z);if(p.x<origin.x-22*scale||p.y<origin.y-22*scale||p.x>origin.x+canvas_size.x+22*scale||p.y>origin.y+canvas_size.y+22*scale)return;if(active>=0&&std::abs(y-a.layers[active].anchor)>std::max(6.0f,marker_height*1.4f))return;const char* icon=kind=="lamp"?"lamp":kind=="ladder"?"ladder":kind=="gate"?"gate":"talk";BbMapArt::DrawIcon(draw,icon,p,32.0f*scale);if(hovered&&std::hypot(ImGui::GetIO().MousePos.x-p.x,ImGui::GetIO().MousePos.y-p.y)<18.0f*scale){if(kind=="gate")ImGui::SetTooltip("%s\nOpenable gate / door\nMay require unlocking; status is not tracked.",name.c_str());else ImGui::SetTooltip("%s",name.c_str());}};
+        auto marker=[&](float x,float y,float z,const std::string& kind,const std::string& name){const auto p=project(x,z);if(p.x<origin.x-22*scale||p.y<origin.y-22*scale||p.x>origin.x+canvas_size.x+22*scale||p.y>origin.y+canvas_size.y+22*scale)return;if(illustrated?!BbMapStatic::PassageMarkerVisible(x,y,z):(active>=0&&std::abs(y-a.layers[active].anchor)>std::max(6.0f,marker_height*1.4f)))return;const char* icon=kind=="lamp"?"lamp":kind=="ladder"?"ladder":kind=="gate"?"gate":"talk";BbMapArt::DrawIcon(draw,icon,p,32.0f*scale);if(hovered&&std::hypot(ImGui::GetIO().MousePos.x-p.x,ImGui::GetIO().MousePos.y-p.y)<18.0f*scale){if(kind=="gate")ImGui::SetTooltip("%s\nOpenable gate / door\nMay require unlocking; status is not tracked.",name.c_str());else ImGui::SetTooltip("%s",name.c_str());}};
         for(size_t i=0;i<destinations.size();++i) {
             const auto& d=destinations[i];if(d.area!=a.id)continue;
             // Lamps are destinations across all displayed storeys. Filtering by
             // the player's floor hid Tomb of Oedon below Central Yharnam.
             if(!BbAtlasStyle::Layout::LampOnMap(d.area==a.id,d.discovered))continue;
+            if(illustrated&&!BbMapStatic::PassageMarkerVisible(d.x,d.y,d.z))continue;
             const auto p=project(d.x,d.z);if(p.x<origin.x||p.y<origin.y||p.x>origin.x+canvas_size.x||p.y>origin.y+canvas_size.y)continue;
             drawn_lamps.push_back({{"name",d.name},{"available",d.available},{"x",p.x},{"y",p.y}});
             const bool pointer_near=std::hypot(pointer.x-p.x,pointer.y-p.y)<20*scale;
@@ -787,10 +793,10 @@ void Draw() {
         }
         for(const auto& m:a.markers)if(BbMapFeatures::Revealed(a.id,m.x,m.y,m.z)&&(m.kind!="npc"||BbMapFeatures::NpcVisible(a.id,m.entity)))marker(m.x,m.y,m.z,m.kind,m.name);
         for(const auto& pickup:BbMapFeatures::Pickups(a.id)) {
-            if(active>=0&&std::abs(pickup.y-a.layers[active].anchor)>std::max(3.f,a.layers[active].span))continue;
+            if(illustrated?!BbMapStatic::PassageMarkerVisible(pickup.x,pickup.y,pickup.z):(active>=0&&std::abs(pickup.y-a.layers[active].anchor)>std::max(3.f,a.layers[active].span)))continue;
             const auto p=project(pickup.x,pickup.z);if(p.x<origin.x||p.y<origin.y||p.x>origin.x+canvas_size.x||p.y>origin.y+canvas_size.y)continue;
             const ImU32 color=pickup.category=="healing"?IM_COL32(230,81,76,255):pickup.category=="insight"?IM_COL32(189,121,234,255):pickup.category=="equipment"?IM_COL32(93,172,242,255):IM_COL32(235,193,79,255);
-            draw->AddCircleFilled(p,4.1f*scale,IM_COL32(20,22,24,255),12);draw->AddCircleFilled(p,3.f*scale,color,12);
+            draw->AddCircleFilled(p,4.1f*scale,IM_COL32(20,22,24,255),12);if(illustrated)IllustratedPickupSymbol(draw,p,3.f*scale,color,pickup.category=="healing"?0:pickup.category=="insight"?1:pickup.category=="equipment"?2:3);else draw->AddCircleFilled(p,3.f*scale,color,12);
             if(!dialog_was_open&&std::hypot(pointer.x-p.x,pointer.y-p.y)<9*scale)ImGui::SetTooltip("%s",pickup.label.c_str());
         }
         if(UsesControllerGlyphs()&&BbMapFeatures::TravelEnabled()){draw->AddCircle(pointer,8*scale,paper,24,1.f*scale);draw->AddLine(ImVec2(pointer.x-13*scale,pointer.y),ImVec2(pointer.x+13*scale,pointer.y),paper,.7f*scale);draw->AddLine(ImVec2(pointer.x,pointer.y-13*scale),ImVec2(pointer.x,pointer.y+13*scale),paper,.7f*scale);}
@@ -807,7 +813,7 @@ void Draw() {
     }
     BbMapArt::DrawIcon(draw,"compass",at(BbAtlasStyle::Layout::compass_x,BbAtlasStyle::Layout::compass_y),BbAtlasStyle::Layout::compass_size*scale,0,IM_COL32(174,166,143,170));
     // Stack keys in the right artwork gutter, aligned to the material key.
-    if(available){
+    if(available&&!illustrated){
         constexpr float x=BbAtlasStyle::Layout::key_x;
         float bottom=BbAtlasStyle::Layout::key_y;
         const char* labels[]={"Floor","Other levels","Interior"};
@@ -873,6 +879,7 @@ void Draw() {
     }
     if(!travel_message.empty())draw->AddText(font,14*scale,at(175,634),paper,travel_message.c_str());
     if(!BbMapFeatures::Error().empty())draw->AddText(font,12*scale,at(175,614),muted,BbMapFeatures::Error().c_str());
+    if(illustrated)IllustratedLegend(draw,font,layout,scale,std::getenv("BB_ATLAS_PASSAGE"));
     const bool ps=BbAtlasMenu::UsesPlayStationGlyphs();
     struct Control {const char* label;const char* key;const char* icon;int action;};
     std::vector<Control> controls;

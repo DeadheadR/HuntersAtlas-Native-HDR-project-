@@ -7,7 +7,17 @@ layout(location=1) out vec2 outUV;
 layout(push_constant) uniform Constants {vec4 view;vec4 data;vec4 paint;vec4 params;} p;
 void main() {
  vec2 projected=position*p.view.xy+p.view.zw;
- if(p.data.w>1.5) {
+ if(p.data.w>3.5) {
+  outColour=p.paint;outUV=auxiliary;
+ } else if(p.data.w>2.5) {
+  // Stable world-space grain, clipped to exact source-derived polygon triangles.
+  vec2 world=vec2(position.x,-position.y);
+  float broad=sin(world.x*.31+sin(world.y*.18))*sin(world.y*.29+sin(world.x*.13));
+  float fine=fract(sin(dot(world,vec2(12.9898,78.233)))*43758.5453);
+  float grain=.90+.075*broad+.025*fine;
+  outColour=vec4(p.paint.rgb*grain,p.paint.a);
+  outUV=fract(world*.035);
+ } else if(p.data.w>1.5) {
   float distance=colour.a<0.5?p.params.z*0.5+0.5:max(0.0,p.params.z*0.5-0.5);
   projected+=auxiliary*p.params.xy*distance;
   float alpha=p.paint.a+(p.params.w>1.5?colour.g:(p.params.w>0.5?colour.r:0.0));

@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.1
+
+- Continuous supported paths for all 16 areas, illustrated margins and a separate legend.
+- Height-aware local passage focus, preserving slopes and surrounding routes.
+- Resolution-aware wheel, keyboard and controller zoom verified in 28 current-build cases.
+- Clean player package with the prior launcher cache fix and integrity checks retained.
+
+See [3.1 release notes](releases/v3.1.md).
+
 ## 1.1
 
 - Discovered-lamp travel with controller selection and confirmation.

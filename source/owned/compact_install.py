@@ -60,7 +60,7 @@ def main():
  write(profile,settings)
  receipt=dict(schema=1,format='compiled-vector-v1',game_build='1.09',game_sha256=core.SUPPORTED_GAME_SHA256,atlas_enabled=True,mouse_look_enabled=True,game_files_changed=False,existing_launcher_required=False,initialized_at=stamp)
  write(state/'installation/compact-receipt.json',receipt)
- print("Hunter's Atlas 3.0 is ready. Open HuntersAtlas.exe, check Mods & patches, then press Play.")
+ print("Hunter's Atlas 3.1 is ready. Open HuntersAtlas.exe, check Mods & patches, then press Play.")
  if not args.no_open:subprocess.Popen([str(contract['pythonw']),'-I','-B',str(ROOT/'owned/app.py')],cwd=ROOT,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
 if __name__=='__main__':
  try:main()

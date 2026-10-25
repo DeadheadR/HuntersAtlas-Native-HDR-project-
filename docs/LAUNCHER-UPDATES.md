@@ -1,38 +1,14 @@
-# Hunter's Atlas 3.0
+# Update to Hunter's Atlas 3.1
 
-All 16 supported areas and 602 floors are already baked into compact vector data.
-No map generation, compiler, map download or separately installed launcher is needed.
-Atlas includes its own tested Windows runtime, Python and required DLLs.
+Download the current Windows ZIP from the [3.1 release](https://github.com/MikeTat1988/HuntersAtlas/releases/tag/v3.1).
+Close the game and launcher, extract into a new permanent folder, and run Install.cmd.
+Select your existing game and save folder. Keep the previous folder until the new
+installation is verified.
 
-## Install and play
+The package owns its tested Windows 1.9 runtime and does not depend on another
+installed launcher's version. It retains the October cache-recovery fix and
+immutable file validation. No private profile, save, installation receipt or
+generated GPU cache is distributed.
 
-1. Close the game and launcher. Extract the whole ZIP into a new permanent folder.
-2. Run **Install.cmd**. Select your Bloodborne **CUSA00207 1.09** game folder if asked.
-3. Open **HuntersAtlas.exe**. Hunter's Atlas is enabled under **Mods & patches**.
-4. Press **Play**, then **Continue** in the game. Press **M** to open the map.
-
-Game files and saves are not included. Keep your existing save folder and select it
-in the launcher if it was not detected automatically. Installation does not change
-your game files. Extract updates to a new folder and run that folder's Install.cmd.
-
-## Mouse and display
-
-For faster camera turning: **Inputs → Mouse look → Sensitivity**, then **Save**.
-The default is 1.0; try 2.0 and adjust to taste. Mouse-look emulates the right
-stick, so Bloodborne's maximum stick turn speed still applies.
-
-The map scales proportionally to the display and keeps its world coverage when
-the window is resized. Ultrawide and taller screens use a centered layout without
-stretching. Mouse-wheel, keyboard and controller zoom use matching scaled limits.
-
-## What's new
-
-- All map shapes, outlines and decorative geometry are compiled once offline.
-- The game loads compact map data and draws it directly; no collision extraction
-  or map triangulation runs while playing.
-- Correct area names, live position, floors, pan/zoom and discovered-lamp travel.
-- Works independently of the version of any separately installed launcher.
-
-Renderer checks covered 720p, 1080p, 1440p, 4K, 1920×1200, 3440×1440 and
-5120×1440, plus resizing and zoom. These are offscreen renderer checks; every
-resolution has not been tested through a live game's display mode switch.
+This release is a complete ZIP update. It does not disable or change authenticated
+updater trust/signature checks. Earlier Atlas versions are legacy and unsupported.

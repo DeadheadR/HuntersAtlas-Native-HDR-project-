@@ -1,4 +1,9 @@
-# Atlas 3.0 compact build
+# Atlas 3.1 compiled renderer
+
+The current illustrated payload compiler and original art are in
+`source/illustrated/`. Use its README and explicit-input `build_native.py` for
+the current integration. This folder retains the legacy base/grid/hatch compiler
+alongside the tested illustrated renderer and matching shader.
 
 The shipped native executable links the pinned Windows 1.9 baseline with the
 following replacements: bbport_map.cpp, map_vector.cpp, vector_backend.cpp and
@@ -21,12 +26,20 @@ source/atlas2/build_local.py. Link these override objects BEFORE the pinned
 libbbgpu.a, then use its ordinary bb-probe link inputs plus zlib, OpenSSL and
 Vulkan. This avoids rebuilding unrelated native GPU/runtime objects.
 
-The scripts in this directory record the exact tested maintainer build and
-packaging recipe. Their workstation path defaults identify retained inputs;
-replace them with the corresponding extracted source/build/toolchain paths.
+The older scripts in this directory record historical compact build context.
+Their workstation defaults are not the current public packaging command;
+use the explicit inputs documented in `source/illustrated/README.md`.
 All relevant source additions and generated shader source are supplied here.
 The player runtime performs no build step and depends only on its ZIP contents.
 
 The accompanying corresponding/ directory retains the full native baseline,
 upstream Windows 1.9 source, dependency sources and their existing licenses.
 The complete Atlas source tree is supplied alongside these compact additions.
+# Compact compiled map renderer
+
+This folder contains the runtime renderer and its shader. The illustrated
+runtime is compiled from `map_vector.cpp`, `bbport_map.cpp`,
+`vector_backend.cpp`, `vector.vert`, `illustrated_draw.h`, and
+`illustrated_legend.h`. Maintain the matching offline generation sources in
+`source/illustrated/`; see that folder's README for inputs, bake commands, and
+the limitations of the pinned-baseline integration build.

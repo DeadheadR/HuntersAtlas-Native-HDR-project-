@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "tested_runtime_sha256": "54e8644c4b69fc455a5ace3bb894cb0b1cc126196accf74c4369d78e53a2005b",
+  "sources": {
+    "map_vector.cpp": {
+      "tested_source_sha256": "cfe529a239e946bff601de85b1ea01c0014cc741657a09835d42ec82358db388",
+      "public_source_sha256": "27c0defc12af48c3552b774424760b248d816238c081dd9d41c12e851683a9fb",
+      "change": "line-ending normalization only",
+      "normalized_tested_source_sha256": "27c0defc12af48c3552b774424760b248d816238c081dd9d41c12e851683a9fb"
+    },
+    "illustrated_draw.h": {
+      "tested_source_sha256": "7ccbee4e74f4f74b6d201987585d6e092c378ffcb837298acf3f16e398f70453",
+      "public_source_sha256": "7ccbee4e74f4f74b6d201987585d6e092c378ffcb837298acf3f16e398f70453",
+      "change": "line-ending normalization only",
+      "normalized_tested_source_sha256": "7ccbee4e74f4f74b6d201987585d6e092c378ffcb837298acf3f16e398f70453"
+    },
+    "illustrated_legend.h": {
+      "tested_source_sha256": "318b42444e23d5d22d5d9c99ac46b1eb4535a2224a2627b23a3daffe9c19969e",
+      "public_source_sha256": "c18a15d8418b86ae3f5e5f7c4fdfa86a4cfcbc9d3ef4ab362bf1eead6e97e280",
+      "change": "line-ending normalization only",
+      "normalized_tested_source_sha256": "c18a15d8418b86ae3f5e5f7c4fdfa86a4cfcbc9d3ef4ab362bf1eead6e97e280"
+    },
+    "vector.vert": {
+      "tested_source_sha256": "78ace118b91414d46df040656a421e4b6ca390f3b5ac1004a8e6d805f42da24b",
+      "public_source_sha256": "a00141cd416cc47de2bc6df9d2b806faabd10e21263f13e264476760bff47d5b",
+      "change": "line-ending normalization only",
+      "normalized_tested_source_sha256": "a00141cd416cc47de2bc6df9d2b806faabd10e21263f13e264476760bff47d5b"
+    },
+    "bbport_map.cpp": {
+      "tested_source_sha256": "b4ce8424e6c4fea1e6bf84e7afd4eec34b887d51cdd5234042b48d3fc5f569f9",
+      "public_source_sha256": "695af95d1a367c92ea346f5b076d1dc9b88b508fa9dcc5d689c8c7a584659d7b",
+      "change": "portable include directives and line-ending normalization only",
+      "normalized_tested_source_sha256": "5613b2e0e4caf6539be5708017ec01e89560eb7a083d1be0512cadc50b73af35"
+    },
+    "vector_backend.cpp": {
+      "tested_source_sha256": "4826b8fbc1af5163670105a02499c7a8f4346b59972aef254ed3e6abe83a1f56",
+      "public_source_sha256": "09fc96268d787e49d4b6945b5f310adc3700674135097436fa533cf270c7c46a",
+      "change": "portable include directives and line-ending normalization only",
+      "normalized_tested_source_sha256": "6b73a8c7719c5a55ce6d089a88c42a6a27d15578a911aab2e17329493381074a"
+    }
+  },
+  "shader_header_sha256": "30223d4ca8b69c9b2b433a45b3539d2aa0c8abdc8566f58e405d8e0fc89e7f1d",
+  "baseline": {
+    "upstream_release": "windows-v1.9",
+    "upstream_commit": "652f9a494c47cc8c1ab16f28b456372eaa8103f8"
+  },
+  "full_clean_native_rebuild_claimed": false,
+  "public_text_encoding": "UTF-8 with Git-normalized LF line endings"
+}

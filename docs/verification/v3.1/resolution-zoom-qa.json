@@ -1,0 +1,498 @@
+{
+  "schema": 1,
+  "scope": "Offscreen Vulkan framebuffer using current illustrated runtime objects and hash-validated extracted installed assets; no game/display-mode claim",
+  "controls": [
+    "mouse wheel",
+    "keyboard plus/minus",
+    "mapped controller RT/LT",
+    "minimum/maximum zoom clamps"
+  ],
+  "resize_coverage": "75% live ImGui viewport resize and restore preserves normalized zoom",
+  "areas": {
+    "urban": {
+      "tested": true,
+      "area_id_internal": "m24_00_00_00",
+      "pose_source": "map bounds center and middle layer anchor"
+    },
+    "stacked": {
+      "tested": true,
+      "area_id_internal": "m35_00_00_00",
+      "pose_source": "map bounds center and middle layer anchor"
+    },
+    "broad_overlap": {
+      "tested": true,
+      "area_id_internal": "m26_00_00_00",
+      "pose_source": "map bounds center and middle layer anchor"
+    },
+    "woods": {
+      "tested": true,
+      "area_id_internal": "m27_00_00_00",
+      "pose_source": "map bounds center and middle layer anchor"
+    }
+  },
+  "cases": [
+    {
+      "area": "broad_overlap",
+      "resolution": [
+        1280,
+        720
+      ],
+      "pass": true,
+      "canvas_bounds_pass": true,
+      "legend_outside_canvas": true,
+      "legend_uniformly_scaled": true,
+      "world_coverage_preserved": true,
+      "lit_pixels": 381553,
+      "controls_pass": true,
+      "zoom_clamps_pass": true,
+      "region_match": true
+    },
+    {
+      "area": "broad_overlap",
+      "resolution": [
+        1920,
+        1080
+      ],
+      "pass": true,
+      "canvas_bounds_pass": true,
+      "legend_outside_canvas": true,
+      "legend_uniformly_scaled": true,
+      "world_coverage_preserved": true,
+      "lit_pixels": 858955,
+      "controls_pass": true,
+      "zoom_clamps_pass": true,
+      "region_match": true
+    },
+    {
+      "area": "broad_overlap",
+      "resolution": [
+        2560,
+        1440
+      ],
+      "pass": true,
+      "canvas_bounds_pass": true,
+      "legend_outside_canvas": true,
+      "legend_uniformly_scaled": true,
+      "world_coverage_preserved": true,
+      "lit_pixels": 1526881,
+      "controls_pass": true,
+      "zoom_clamps_pass": true,
+      "region_match": true
+    },
+    {
+      "area": "broad_overlap",
+      "resolution": [
+        3840,
+        2160
+      ],
+      "pass": true,
+      "canvas_bounds_pass": true,
+      "legend_outside_canvas": true,
+      "legend_uniformly_scaled": true,
+      "world_coverage_preserved": true,
+      "lit_pixels": 3418802,
+      "controls_pass": true,
+      "zoom_clamps_pass": true,
+      "region_match": true
+    },
+    {
+      "area": "broad_overlap",
+      "resolution": [
+        1920,
+        1200
+      ],
+      "pass": true,
+      "canvas_bounds_pass": true,
+      "legend_outside_canvas": true,
+      "legend_uniformly_scaled": true,
+      "world_coverage_preserved": true,
+      "lit_pixels": 1029122,
+      "controls_pass": true,
+      "zoom_clamps_pass": true,
+      "region_match": true
+    },
+    {
+      "area": "broad_overlap",
+      "resolution": [
+        3440,
+        1440
+      ],
+      "pass": true,
+      "canvas_bounds_pass": true,
+      "legend_outside_canvas": true,
+      "legend_uniformly_scaled": true,
+      "world_coverage_preserved": true,
+      "lit_pixels": 2520435,
+      "controls_pass": true,
+      "zoom_clamps_pass": true,
+      "region_match": true
+    },
+    {
+      "area": "broad_overlap",
+      "resolution": [
+        5120,
+        1440
+      ],
+      "pass": true,
+      "canvas_bounds_pass": true,
+      "legend_outside_canvas": true,
+      "legend_uniformly_scaled": true,
+      "world_coverage_preserved": true,
+      "lit_pixels": 4433452,
+      "controls_pass": true,
+      "zoom_clamps_pass": true,
+      "region_match": true
+    },
+    {
+      "area": "urban",
+      "resolution": [
+        1280,
+        720
+      ],
+      "pass": true,
+      "canvas_bounds_pass": true,
+      "legend_outside_canvas": true,
+      "legend_uniformly_scaled": true,
+      "world_coverage_preserved": true,
+      "lit_pixels": 382160,
+      "controls_pass": true,
+      "zoom_clamps_pass": true,
+      "region_match": true
+    },
+    {
+      "area": "urban",
+      "resolution": [
+        1920,
+        1080
+      ],
+      "pass": true,
+      "canvas_bounds_pass": true,
+      "legend_outside_canvas": true,
+      "legend_uniformly_scaled": true,
+      "world_coverage_preserved": true,
+      "lit_pixels": 860464,
+      "controls_pass": true,
+      "zoom_clamps_pass": true,
+      "region_match": true
+    },
+    {
+      "area": "urban",
+      "resolution": [
+        2560,
+        1440
+      ],
+      "pass": true,
+      "canvas_bounds_pass": true,
+      "legend_outside_canvas": true,
+      "legend_uniformly_scaled": true,
+      "world_coverage_preserved": true,
+      "lit_pixels": 1528753,
+      "controls_pass": true,
+      "zoom_clamps_pass": true,
+      "region_match": true
+    },
+    {
+      "area": "urban",
+      "resolution": [
+        3840,
+        2160
+      ],
+      "pass": true,
+      "canvas_bounds_pass": true,
+      "legend_outside_canvas": true,
+      "legend_uniformly_scaled": true,
+      "world_coverage_preserved": true,
+      "lit_pixels": 3422154,
+      "controls_pass": true,
+      "zoom_clamps_pass": true,
+      "region_match": true
+    },
+    {
+      "area": "urban",
+      "resolution": [
+        1920,
+        1200
+      ],
+      "pass": true,
+      "canvas_bounds_pass": true,
+      "legend_outside_canvas": true,
+      "legend_uniformly_scaled": true,
+      "world_coverage_preserved": true,
+      "lit_pixels": 1030498,
+      "controls_pass": true,
+      "zoom_clamps_pass": true,
+      "region_match": true
+    },
+    {
+      "area": "urban",
+      "resolution": [
+        3440,
+        1440
+      ],
+      "pass": true,
+      "canvas_bounds_pass": true,
+      "legend_outside_canvas": true,
+      "legend_uniformly_scaled": true,
+      "world_coverage_preserved": true,
+      "lit_pixels": 2522495,
+      "controls_pass": true,
+      "zoom_clamps_pass": true,
+      "region_match": true
+    },
+    {
+      "area": "urban",
+      "resolution": [
+        5120,
+        1440
+      ],
+      "pass": true,
+      "canvas_bounds_pass": true,
+      "legend_outside_canvas": true,
+      "legend_uniformly_scaled": true,
+      "world_coverage_preserved": true,
+      "lit_pixels": 4435945,
+      "controls_pass": true,
+      "zoom_clamps_pass": true,
+      "region_match": true
+    },
+    {
+      "area": "stacked",
+      "resolution": [
+        1280,
+        720
+      ],
+      "pass": true,
+      "canvas_bounds_pass": true,
+      "legend_outside_canvas": true,
+      "legend_uniformly_scaled": true,
+      "world_coverage_preserved": true,
+      "lit_pixels": 382531,
+      "controls_pass": true,
+      "zoom_clamps_pass": true,
+      "region_match": true
+    },
+    {
+      "area": "stacked",
+      "resolution": [
+        1920,
+        1080
+      ],
+      "pass": true,
+      "canvas_bounds_pass": true,
+      "legend_outside_canvas": true,
+      "legend_uniformly_scaled": true,
+      "world_coverage_preserved": true,
+      "lit_pixels": 859733,
+      "controls_pass": true,
+      "zoom_clamps_pass": true,
+      "region_match": true
+    },
+    {
+      "area": "stacked",
+      "resolution": [
+        2560,
+        1440
+      ],
+      "pass": true,
+      "canvas_bounds_pass": true,
+      "legend_outside_canvas": true,
+      "legend_uniformly_scaled": true,
+      "world_coverage_preserved": true,
+      "lit_pixels": 1526243,
+      "controls_pass": true,
+      "zoom_clamps_pass": true,
+      "region_match": true
+    },
+    {
+      "area": "stacked",
+      "resolution": [
+        3840,
+        2160
+      ],
+      "pass": true,
+      "canvas_bounds_pass": true,
+      "legend_outside_canvas": true,
+      "legend_uniformly_scaled": true,
+      "world_coverage_preserved": true,
+      "lit_pixels": 3414654,
+      "controls_pass": true,
+      "zoom_clamps_pass": true,
+      "region_match": true
+    },
+    {
+      "area": "stacked",
+      "resolution": [
+        1920,
+        1200
+      ],
+      "pass": true,
+      "canvas_bounds_pass": true,
+      "legend_outside_canvas": true,
+      "legend_uniformly_scaled": true,
+      "world_coverage_preserved": true,
+      "lit_pixels": 1029809,
+      "controls_pass": true,
+      "zoom_clamps_pass": true,
+      "region_match": true
+    },
+    {
+      "area": "stacked",
+      "resolution": [
+        3440,
+        1440
+      ],
+      "pass": true,
+      "canvas_bounds_pass": true,
+      "legend_outside_canvas": true,
+      "legend_uniformly_scaled": true,
+      "world_coverage_preserved": true,
+      "lit_pixels": 2519368,
+      "controls_pass": true,
+      "zoom_clamps_pass": true,
+      "region_match": true
+    },
+    {
+      "area": "stacked",
+      "resolution": [
+        5120,
+        1440
+      ],
+      "pass": true,
+      "canvas_bounds_pass": true,
+      "legend_outside_canvas": true,
+      "legend_uniformly_scaled": true,
+      "world_coverage_preserved": true,
+      "lit_pixels": 4433780,
+      "controls_pass": true,
+      "zoom_clamps_pass": true,
+      "region_match": true
+    },
+    {
+      "area": "woods",
+      "resolution": [
+        1280,
+        720
+      ],
+      "pass": true,
+      "canvas_bounds_pass": true,
+      "legend_outside_canvas": true,
+      "legend_uniformly_scaled": true,
+      "world_coverage_preserved": true,
+      "lit_pixels": 383682,
+      "controls_pass": true,
+      "zoom_clamps_pass": true,
+      "region_match": true
+    },
+    {
+      "area": "woods",
+      "resolution": [
+        1920,
+        1080
+      ],
+      "pass": true,
+      "canvas_bounds_pass": true,
+      "legend_outside_canvas": true,
+      "legend_uniformly_scaled": true,
+      "world_coverage_preserved": true,
+      "lit_pixels": 862349,
+      "controls_pass": true,
+      "zoom_clamps_pass": true,
+      "region_match": true
+    },
+    {
+      "area": "woods",
+      "resolution": [
+        2560,
+        1440
+      ],
+      "pass": true,
+      "canvas_bounds_pass": true,
+      "legend_outside_canvas": true,
+      "legend_uniformly_scaled": true,
+      "world_coverage_preserved": true,
+      "lit_pixels": 1530585,
+      "controls_pass": true,
+      "zoom_clamps_pass": true,
+      "region_match": true
+    },
+    {
+      "area": "woods",
+      "resolution": [
+        3840,
+        2160
+      ],
+      "pass": true,
+      "canvas_bounds_pass": true,
+      "legend_outside_canvas": true,
+      "legend_uniformly_scaled": true,
+      "world_coverage_preserved": true,
+      "lit_pixels": 3424276,
+      "controls_pass": true,
+      "zoom_clamps_pass": true,
+      "region_match": true
+    },
+    {
+      "area": "woods",
+      "resolution": [
+        1920,
+        1200
+      ],
+      "pass": true,
+      "canvas_bounds_pass": true,
+      "legend_outside_canvas": true,
+      "legend_uniformly_scaled": true,
+      "world_coverage_preserved": true,
+      "lit_pixels": 1032854,
+      "controls_pass": true,
+      "zoom_clamps_pass": true,
+      "region_match": true
+    },
+    {
+      "area": "woods",
+      "resolution": [
+        3440,
+        1440
+      ],
+      "pass": true,
+      "canvas_bounds_pass": true,
+      "legend_outside_canvas": true,
+      "legend_uniformly_scaled": true,
+      "world_coverage_preserved": true,
+      "lit_pixels": 2524391,
+      "controls_pass": true,
+      "zoom_clamps_pass": true,
+      "region_match": true
+    },
+    {
+      "area": "woods",
+      "resolution": [
+        5120,
+        1440
+      ],
+      "pass": true,
+      "canvas_bounds_pass": true,
+      "legend_outside_canvas": true,
+      "legend_uniformly_scaled": true,
+      "world_coverage_preserved": true,
+      "lit_pixels": 4437192,
+      "controls_pass": true,
+      "zoom_clamps_pass": true,
+      "region_match": true
+    }
+  ],
+  "pass_all": true,
+  "game_or_physical_display_mode_tested": false,
+  "screenshots_saved": false,
+  "runtime_binding": {
+    "installed_runtime_sha256": "54e8644c4b69fc455a5ace3bb894cb0b1cc126196accf74c4369d78e53a2005b",
+    "expected_build_sha256": "54e8644c4b69fc455a5ace3bb894cb0b1cc126196accf74c4369d78e53a2005b",
+    "test_executable_sha256": "662b6e886dbb0ed532c5a20be3b030844faa593fbce8e2f1f0038fa19e46ca63",
+    "renderer_object_sha256": {
+      "bbport_map.cpp.obj": "e347e270433def9cf663025210eada065b88f40e5bb3f2bc8bde8719bd2c46ac",
+      "bbport_map_static.cpp.obj": "0d39be48580cbec7cf890a10ecfea0d27390da1259e81d2ca8083ac83c8a5517",
+      "imgui_impl_vulkan.cpp.obj": "168c511b6551c2a096b32a738ea124731d6a214db2ff540c23d0b4c14886d511"
+    },
+    "maps_baked_index_sha256": "1abb6e76619713fedb62c052b00112a15b77940187df16057b0ab19a5d0c4876",
+    "installed_assets_pack_sha256": "a19c511db97a11c110d8aca5c48c2cdc50dc6a856f23296f704558263dffce44"
+  }
+}

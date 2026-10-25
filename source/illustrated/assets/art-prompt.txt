@@ -1,0 +1,11 @@
+Generated with the built-in image-generation tool, with transparent_background=true.
+Original output was copied unchanged into assets/forest-atlas.png; its alpha
+channel is preserved. Conversion to .bbra changes file format only.
+
+PROMPT
+Create a production sprite atlas for a top-down illustrated gothic forest navigation map. It must be ORIGINAL artwork. Layout: EXACTLY four equal columns by two equal rows, eight isolated sprites, centered one sprite in each cell, wide completely transparent gutters around every sprite and no sprite crossing any cell boundary. Wide landscape atlas, ideally 2048 by 1024. Actual transparent alpha background, no checkerboard, no paper, no ground plane, no text, no labels, no grid. Strict orthographic overhead camera looking straight down. Dark hand-painted cartography with fine pen outlines, muted sage/olive forest foliage, weathered umber bark, slate-gray rocks, subtle parchment-like paint grain, soft readable highlights, subdued values so cream-colored paths remain dominant. Top row: (1) small gnarled deciduous tree crown with sparse dusty leaves and visible twisted branches; (2) dead leafless oak with crooked branching limbs; (3) dense low cluster of thorny shrubs; (4) moss-covered old forest tree crown. Bottom row: (1) clustered angular slate boulders; (2) low broken cliff crag with layered rock contours; (3) exposed twisting tree roots with two little stones; (4) rough mossy stone outcrop. Objects fill roughly 65 percent of their cells, clean complete silhouettes, generous transparent margin, slight consistent diffuse shading, no long cast shadows. Elegant atmospheric game-map illustration, not a UI mockup, not photoreal, not pixel art. These are decorative assets placed outside paths; do NOT draw any roads, buildings, labels, people or game-map layout.
+
+PLACEMENT
+The tree and rock positions are decorative, not a survey of individual game
+objects. The world-space sprite mesh is clipped outside the navigation surface
+and does not change the map's traversable geometry.

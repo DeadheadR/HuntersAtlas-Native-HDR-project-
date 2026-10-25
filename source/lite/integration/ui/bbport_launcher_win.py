@@ -616,7 +616,7 @@ class Launcher:
         self.mod_order, self.mod_vars, self.patch_vars = [], {}, {}
         self.tracker = trophies.Tracker(self.trophy_dir())
         self.trophies_loaded, self.toasts = False, []
-        root.title("Hunter's Atlas 3.0")
+        root.title("Hunter's Atlas 3.1")
         root.configure(bg=BG)
         self.dpi = root.winfo_fpixels('1i') / 96.0
         root.geometry(f'{self.px(1120)}x{self.px(740)}')

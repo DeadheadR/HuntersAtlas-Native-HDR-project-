@@ -1,45 +1,47 @@
-# Hunter's Atlas 3.0
+# Hunter's Atlas 3.1
 
-[Download the Windows ZIP](https://github.com/MikeTat1988/HuntersAtlas/releases/download/v3.0/Hunters-Atlas-3.0-Windows.zip)
+[Download the Windows ZIP](https://github.com/MikeTat1988/HuntersAtlas/releases/download/v3.1/Hunters-Atlas-3.1-Windows.zip)
 
-All 16 supported areas and 602 floors are already baked into compact vector data.
-No map generation, compiler, map download or separately installed launcher is needed.
-Atlas includes its own tested Windows runtime, Python and required DLLs.
+All 16 supported areas are precompiled and included. Continuous paths use
+game-authored navigation geometry, with illustrated surroundings, a separate
+legend and player-height focus for overlapping passages. No map generation,
+compiler or separately installed launcher is needed to play. Atlas includes its
+own Windows runtime, Python and required DLLs.
 
 ## Install and play
 
-1. Close the game and launcher. Extract the whole ZIP into a new permanent folder.
-2. Run **Install.cmd**. Select your Bloodborne **CUSA00207 1.09** game folder if asked.
-3. Open **HuntersAtlas.exe**. Hunter's Atlas is enabled under **Mods & patches**.
-4. Press **Play**, then **Continue** in the game. Press **M** to open the map.
+1. Close the game and launcher. Extract the whole Windows ZIP into a new permanent folder.
+2. Run **Install.cmd**. Select your **CUSA00207 Bloodborne 1.09** folder if asked.
+3. Open **HuntersAtlas.exe**. Atlas is enabled under **Mods & patches**.
+4. Press **Play**, then **Continue**. Press **M** to open the map.
 
-Game files and saves are not included. Keep your existing save folder and select it
-in the launcher if it was not detected automatically. Installation does not change
-your game files. Extract updates to a new folder and run that folder's Install.cmd.
+Keep/select your existing save folder in the launcher. Game files, saves and
+personal profiles are not included in the download. Installation does not
+overwrite your game files. Extract updates into a new folder and run Install.cmd.
 
-## Mouse and display
+## Map and controls
 
-For faster camera turning: **Inputs → Mouse look → Sensitivity**, then **Save**.
-The default is 1.0; try 2.0 and adjust to taste. Mouse-look emulates the right
-stick, so Bloodborne's maximum stick turn speed still applies.
+- Ordinary slopes remain continuous. Auto follows player height at actual
+  overlapping passages; Upper/Lower offer local passage overrides.
+- Mouse wheel, keyboard **+ / -** and mapped controller **RT / LT** zoom use
+  the same resolution-scaled limits. Pan with mouse drag or the right stick.
+- Resizing preserves world coverage. Taller and ultrawide screens keep a
+  centered, proportionally scaled layout without stretching.
+- For faster mouse-look: **Inputs → Mouse look → Sensitivity → Save**.
+  Try 2.0 instead of 1.0. Right-stick emulation retains the game's turn-speed limit.
 
-The map scales proportionally to the display and keeps its world coverage when
-the window is resized. Ultrawide and taller screens use a centered layout without
-stretching. Mouse-wheel, keyboard and controller zoom use matching scaled limits.
+The drawings are decorative context, not surveyed building/tree positions.
+The October launcher cache-recovery fix and runtime integrity checks are retained.
 
-## What's new
+## Verification
 
-- All map shapes, outlines and decorative geometry are compiled once offline.
-- The game loads compact map data and draws it directly; no collision extraction
-  or map triangulation runs while playing.
-- Correct area names, live position, floors, pan/zoom and discovered-lamp travel.
-- Works independently of the version of any separately installed launcher.
+The illustrated runtime passed 28 native offscreen cases across 1280×720,
+1920×1080, 2560×1440, 3840×2160, 1920×1200, 3440×1440 and 5120×1440.
+Each case checked zoom controls and limits, live resize coverage, canvas bounds,
+legend alignment and visible framebuffer output. All 16 maps also passed native
+render and private visual review. Test reports accompany the release.
 
-Renderer checks covered 720p, 1080p, 1440p, 4K, 1920×1200, 3440×1440 and
-5120×1440, plus resizing and zoom. These are offscreen renderer checks; every
-resolution has not been tested through a live game's display mode switch.
+These checks do not certify every live display/GPU combination or every player-only
+roof, ladder, drop or dynamic door. See [QA](docs/QA.md) and [release notes](docs/releases/v3.1.md).
 
-## Supported version
-
-**Atlas 3.0 is the only supported version. All earlier versions are legacy and
-no longer supported. Please update to 3.0 before reporting an issue.**
+**Atlas 3.1 is supported. Earlier versions are legacy and unsupported.**

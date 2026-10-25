@@ -1,38 +1,17 @@
-# Hunter's Atlas 3.0
+# Install Hunter's Atlas 3.1
 
-All 16 supported areas and 602 floors are already baked into compact vector data.
-No map generation, compiler, map download or separately installed launcher is needed.
-Atlas includes its own tested Windows runtime, Python and required DLLs.
+[Download the Windows ZIP](https://github.com/MikeTat1988/HuntersAtlas/releases/download/v3.1/Hunters-Atlas-3.1-Windows.zip).
 
-## Install and play
+1. Close Bloodborne and the launcher.
+2. Extract the entire ZIP into a new permanent folder.
+3. Run Install.cmd and select your CUSA00207 Bloodborne 1.09 folder if asked.
+4. Open HuntersAtlas.exe. Atlas is enabled under Mods & patches.
+5. Play, Continue, and press M to open the map.
 
-1. Close the game and launcher. Extract the whole ZIP into a new permanent folder.
-2. Run **Install.cmd**. Select your Bloodborne **CUSA00207 1.09** game folder if asked.
-3. Open **HuntersAtlas.exe**. Hunter's Atlas is enabled under **Mods & patches**.
-4. Press **Play**, then **Continue** in the game. Press **M** to open the map.
+Select your existing save folder in the launcher. The ZIP contains no game files,
+saves, personal profile or generated shader cache. Installation does not overwrite
+your game files. All 16 maps, runtime, Python and required DLLs are included.
 
-Game files and saves are not included. Keep your existing save folder and select it
-in the launcher if it was not detected automatically. Installation does not change
-your game files. Extract updates to a new folder and run that folder's Install.cmd.
-
-## Mouse and display
-
-For faster camera turning: **Inputs → Mouse look → Sensitivity**, then **Save**.
-The default is 1.0; try 2.0 and adjust to taste. Mouse-look emulates the right
-stick, so Bloodborne's maximum stick turn speed still applies.
-
-The map scales proportionally to the display and keeps its world coverage when
-the window is resized. Ultrawide and taller screens use a centered layout without
-stretching. Mouse-wheel, keyboard and controller zoom use matching scaled limits.
-
-## What's new
-
-- All map shapes, outlines and decorative geometry are compiled once offline.
-- The game loads compact map data and draws it directly; no collision extraction
-  or map triangulation runs while playing.
-- Correct area names, live position, floors, pan/zoom and discovered-lamp travel.
-- Works independently of the version of any separately installed launcher.
-
-Renderer checks covered 720p, 1080p, 1440p, 4K, 1920×1200, 3440×1440 and
-5120×1440, plus resizing and zoom. These are offscreen renderer checks; every
-resolution has not been tested through a live game's display mode switch.
+Use mouse wheel, keyboard +/- or mapped controller RT/LT to zoom. The map scales
+proportionally and preserves world coverage on resize. See [QA](QA.md) for the
+tested resolutions and limits. Keep the previous folder until you verify play.
