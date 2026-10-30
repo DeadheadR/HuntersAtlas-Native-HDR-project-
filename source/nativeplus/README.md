@@ -7,8 +7,9 @@ display's peak. Two tone mappers:
 
 - **Vanilla+** (default), by **souperman9**, from his RenoDX Bloodborne mod: the game's own image,
   with brighter highlights up to your display's peak.
-- **PsychoV**: RenoDX's PsychoV-30 with Vanilla+'s highlights, bloom and hues: deeper blacks and
-  more detail near the peak.
+- **PsychoV**: RenoDX's PsychoV-30 with the game's bloom kept: deeper blacks, softer highlights
+  with the most detail near the peak. Two sliders in the in-game menu, **Vanilla+ Highlights** and
+  **Hue Correction**, take it towards Vanilla+'s brightness and hues.
 
 > **Unofficial, AI-assisted.** Native+ is not a RenoDX mod and is not affiliated with or endorsed
 > by RenoDX or its authors. It reuses RenoDX's MIT-licensed code (PsychoV-30, its grading, hue
@@ -40,7 +41,7 @@ Brightness**, or the HUD flickers.
 ## Source
 
 `nativeplus-engine.patch` and `nativeplus-launcher.patch` come from LanternEngine-NativePlusHDR
-`556131e` (branch `lantern-Native+HDR-beta`, Native+ 0.9.38.2 beta 2), whose patches target
+`4463055` (branch `lantern-Native+HDR-beta`, Native+ 0.9.38.3), whose patches target
 Lantern 0.9.38. Here they are rebased onto Lantern 0.9.37 (`d901fbd`), the version Atlas pins:
 
 - The engine patch is Native+'s, line for line. One hunk (`gpu/shim/window.cpp`) has new

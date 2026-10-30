@@ -1,5 +1,5 @@
 diff --git a/launcher/windows/BloodborneLauncher/Core/Choices.cs b/launcher/windows/BloodborneLauncher/Core/Choices.cs
-index 8443ac6..2c7a22f 100644
+index 8443ac6..354014a 100644
 --- a/launcher/windows/BloodborneLauncher/Core/Choices.cs
 +++ b/launcher/windows/BloodborneLauncher/Core/Choices.cs
 @@ -1,4 +1,4 @@
@@ -28,17 +28,17 @@ index 8443ac6..2c7a22f 100644
          };
  
 -        public static readonly Choice[] HdrBoost =
-+        /// <summary>hdr_tonemapper with Native+ (hdr_mode=nativeplus): 5 Vanilla+ (souperman9's, from his RenoDX Bloodborne mod; the default) or 7 PsychoV (RenoDX's PsychoV-30 with Vanilla+'s curve above mid grey, its bloom and hues). 4, PsychoV-30 alone before PsychoV replaced it, shows as PsychoV (HdrToneMapperValue).</summary>
++        /// <summary>hdr_tonemapper with Native+ (hdr_mode=nativeplus): 5 Vanilla+ (souperman9's, from his RenoDX Bloodborne mod; the default) or 4 PsychoV (RenoDX's PsychoV-30 with Vanilla+'s bloom; its Vanilla+ Highlights and Hue Correction are in the in-game menu). 7, 0.9.38.2's PsychoV, shows as PsychoV (HdrToneMapperValue): the engine reads it as PsychoV with both sliders at 100 %.</summary>
 +        public static readonly Choice[] HdrToneMapper =
          {
 -            new(L.T("Off"), "0"), new(L.T("Low (default)"), "0.25"), new(L.T("Medium"), "0.5"), new(L.T("High"), "1"),
 +            // The segmented buttons show the label up to " (".
-+            new("Vanilla+ (by souperman9, default)", "5"), new("PsychoV (PsychoV-30 on Vanilla+'s curve)", "7"),
++            new("Vanilla+ (by souperman9, default)", "5"), new("PsychoV (PsychoV-30, sliders in game)", "4"),
          };
  
 -        public static readonly Choice[] HdrUiBrightness =
-+        /// <summary>The stored hdr_tonemapper as a HdrToneMapper choice, as the engine reads it: 4 and 7 PsychoV, anything else Vanilla+.</summary>
-+        public static string HdrToneMapperValue(string stored) => stored == "4" || stored == "7" ? "7" : "5";
++        /// <summary>The stored hdr_tonemapper as a HdrToneMapper choice, as the engine reads it: 4 and 7 PsychoV, anything else Vanilla+. A stored 7 is shown as PsychoV but left as it is until changed, so the engine still reads its sliders at 100 %.</summary>
++        public static string HdrToneMapperValue(string stored) => stored == "4" || stored == "7" ? "4" : "5";
 +
 +
 +        public static readonly Choice[] HdrBoost =
@@ -182,7 +182,7 @@ index 0000000..e5cbd26
 +    }
 +}
 diff --git a/launcher/windows/BloodborneLauncher/Views/DisplayPage.cs b/launcher/windows/BloodborneLauncher/Views/DisplayPage.cs
-index a61642a..b11940d 100644
+index a61642a..7907596 100644
 --- a/launcher/windows/BloodborneLauncher/Views/DisplayPage.cs
 +++ b/launcher/windows/BloodborneLauncher/Views/DisplayPage.cs
 @@ -1,4 +1,4 @@
@@ -286,7 +286,7 @@ index a61642a..b11940d 100644
                  Choices.HdrBoost, () => Ini.Get("hdr_boost", "0.25"), v => Ini.Set("hdr_boost", v));
 +            _hdrBoostRow = (FrameworkElement)Body.Children[Body.Children.Count - 1];
 +            ComboRow(SymbolRegular.Lightbulb24, L.T("Tone mapper"),
-+                "Native+ only. Vanilla+ (by souperman9, from his RenoDX Bloodborne mod): the game's image up to mid grey, brighter highlights up to your display's peak. PsychoV: RenoDX's PsychoV-30 with its shadows, Vanilla+'s curve, bloom and hues above mid grey; deeper blacks, more detail at the top. Also in the in-game menu, live",
++                "Native+ only. Vanilla+ (by souperman9, from his RenoDX Bloodborne mod): the game's image up to mid grey, brighter highlights up to your display's peak. PsychoV: RenoDX's PsychoV-30 with Vanilla+'s bloom; deeper blacks, softer highlights with the most detail near the peak. Its Vanilla+ Highlights and Hue Correction (in-game menu) take it towards Vanilla+'s brightness and hues. Also in the in-game menu, live",
 +                Choices.HdrToneMapper, () => Choices.HdrToneMapperValue(Ini.Get("hdr_tonemapper", "5")), v => Ini.Set("hdr_tonemapper", v));
 +            _hdrToneMapperRow = (FrameworkElement)Body.Children[Body.Children.Count - 1];
              var hdrMore = Advanced();

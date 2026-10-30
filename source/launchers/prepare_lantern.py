@@ -12,7 +12,7 @@ REPO=Path(__file__).resolve().parents[2]
 PIN='d901fbd2ea4bea114b37c26a2a9278d1e97f7b46'
 SOURCE_TREE_SHA256='96dc305bb14a0e2d47e0b52e3c1a4c7899e9d72be63a65fa3bf0fa37ebc848ad'
 NATIVEPLUS=REPO/'source/nativeplus'
-NATIVEPLUS_SOURCE='LRF17/LanternEngine-NativePlusHDR 556131e92f66352a5f89d426390225681d7c330a'
+NATIVEPLUS_SOURCE='LRF17/LanternEngine-NativePlusHDR 44630555cf281763a576261395c798b3c5ccee8f'
 
 def sha(p): return hashlib.sha256(p.read_bytes()).hexdigest()
 def replace(text, old, new, *, count=1):
