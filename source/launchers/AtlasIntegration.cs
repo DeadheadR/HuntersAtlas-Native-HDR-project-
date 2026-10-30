@@ -72,8 +72,9 @@ public static class AtlasIntegration
     {
         Trace("Atlas: checking game and runtime");
         var game = GameCheck.Inspect(GameEnvironment.GameDir(settings));
-        if (game.TitleId != "CUSA00207" || game.Version != "01.09")
-            throw new InvalidDataException("This Atlas adapter supports CUSA00207 update 1.09. Select that game folder before playing.");
+        // Any retail region: its 1.09 executable is the one hashed below (CUSA03173's is CUSA00207's).
+        if (!GameCheck.SupportedTitles.Contains(game.TitleId) || game.Version != "01.09")
+            throw new InvalidDataException("This Atlas adapter supports Bloodborne update 1.09. Select that game folder before playing.");
         var executable = Path.Combine(GameCheck.UpdateFolder(GameEnvironment.GameDir(settings)) ?? GameEnvironment.GameDir(settings), "eboot.bin");
         using (var input = File.OpenRead(executable))
             if (Convert.ToHexString(SHA256.HashData(input)).ToLowerInvariant() != "d65f0b4f01d59166aed16f8604196d8b7dd805abbf0758b356e8f1354c9429f9")
