@@ -238,6 +238,7 @@ def stage_lantern(cfg,out,compile_runtime):
     }.items():(root/name).write_text(text,encoding='utf-8')
     shutil.copy2(REPO/'docs/INSTALL-LAUNCHERS.md',root/'INSTALL.md')
     (root/'README.txt').write_text(f"Hunter's Atlas {VERSION} - Awakenchan-compatible edition\n\n"
+        "Hunter's Atlas created by MikeTat1988 (https://github.com/MikeTat1988/HuntersAtlas)\n"
         "Based on Lantern Engine v0.9.37.\nLantern Engine by Awaken (https://github.com/Awakenchan/LanternEngine)\n"
         "Native+ HDR by LRF17 (https://github.com/LRF17/LanternEngine-NativePlusHDR): Display > HDR mode > Native+. See README-NativePlusHDR.md.\n"
         "Modified for Hunter's Atlas; not an official Lantern Engine release.\n\n"

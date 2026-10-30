@@ -1,7 +1,10 @@
 # Hunter's Atlas 3.1 + Native+ HDR
 
-Source integration of [Hunter's Atlas](https://github.com/MikeTat1988/HuntersAtlas) by
-MikeTat1988 and [Native+ HDR](https://github.com/LRF17/LanternEngine-NativePlusHDR) by LRF17.
+**Hunter's Atlas created by MikeTat1988**: [github.com/MikeTat1988/HuntersAtlas](https://github.com/MikeTat1988/HuntersAtlas)
+(the original repository).
+
+Source integration of Hunter's Atlas and
+[Native+ HDR](https://github.com/LRF17/LanternEngine-NativePlusHDR) by LRF17.
 The Lantern edition built here (`Build-Lantern.cmd`, archive
 `Hunters-Atlas-3.1-Lantern-NativePlusHDR.zip`) is Atlas's Lantern 0.9.37 edition with Native+'s
 HDR mode and tone mappers. How the two are combined, and Native+'s quick start:
