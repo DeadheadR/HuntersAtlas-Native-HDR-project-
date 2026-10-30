@@ -28,8 +28,14 @@ def prepare(root:Path):
             '            try { foreach (var (key, value) in GameEnvironment.Build(s)) info.Environment[key] = value; }\n'
             '            catch (Exception e) when (e is IOException or InvalidOperationException or System.Text.Json.JsonException) { return e.Message; }')
     edit('Core/GameRunner.cs',runner)
-    edit('Core/GameEnvironment.cs',lambda s:replace(s,'            return env;\n',
-        '            AtlasIntegration.Apply(s, env);\n            return env;\n'))
+    # SDL's DirectInput scan waits on every HID device: one that stops answering held the
+    # Controls page (SDL_InitSubSystem on the UI thread) for 30 s. The Native+ engine already
+    # turns it off; the launcher's pad detection and the game's environment now do too.
+    edit('Core/GameEnvironment.cs',lambda s:replace(replace(s,'            return env;\n',
+        '            AtlasIntegration.Apply(s, env);\n            return env;\n'),
+        '            yield return ("SDL_JOYSTICK_HIDAPI_PS3", "1");\n',
+        '            yield return ("SDL_JOYSTICK_DIRECTINPUT", "0");\n'
+        '            yield return ("SDL_JOYSTICK_HIDAPI_PS3", "1");\n'))
     edit('Core/LauncherSettings.cs',lambda s:replace(s,'            ["ui_language"] = "en",',
         '            ["atlas_enabled"] = true,\n            ["atlas_travel_enabled"] = true,\n'
         '            ["atlas_npc_mode"] = "all",\n            ["atlas_items_enabled"] = false,\n'
