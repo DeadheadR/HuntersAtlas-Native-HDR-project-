@@ -18,3 +18,4 @@
 *.ttf binary
 *.atlaslite binary
 source/lite/compatibility/profiles/windows-v1.9/native-integration.diff text eol=lf -whitespace
+source/nativeplus/*.patch text eol=lf -whitespace

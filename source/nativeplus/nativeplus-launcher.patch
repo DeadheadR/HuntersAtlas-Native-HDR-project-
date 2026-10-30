@@ -1,0 +1,301 @@
+diff --git a/launcher/windows/BloodborneLauncher/Core/Choices.cs b/launcher/windows/BloodborneLauncher/Core/Choices.cs
+index 8443ac6..2c7a22f 100644
+--- a/launcher/windows/BloodborneLauncher/Core/Choices.cs
++++ b/launcher/windows/BloodborneLauncher/Core/Choices.cs
+@@ -1,4 +1,4 @@
+-﻿namespace BloodborneLauncher.Core
++namespace BloodborneLauncher.Core
+ {
+     /// <summary>A drop-down entry. Note is shown under the row while this entry is selected.</summary>
+     public sealed record Choice(string Label, string Value, string? Note = null);
+@@ -208,7 +208,7 @@
+ 
+         public static readonly Choice[] HdrPaperWhite =
+         {
+-            new(L.T("100 nits"), "100"), new(L.T("150 nits"), "150"), new(L.T("200 nits (default)"), "200"),
++            new(L.T("100 nits"), "100"), new(L.T("150 nits"), "150"), new(L.T("203 nits (default)"), "203"),
+             new(L.T("250 nits"), "250"), new(L.T("300 nits"), "300"), new(L.T("400 nits"), "400"),
+         };
+ 
+@@ -237,19 +237,28 @@
+ 
+         public static readonly Choice[] HdrMode =
+         {
+-            new(L.T("Native (default)"), "native"), new(L.T("Expanded"), "expand"),
++            new(L.T("Native"), "native"), new(L.T("Expanded"), "expand"),
++            new("Native+ (restart)", "nativeplus",
++                "Native+ HDR by LRF17 (github.com/LRF17/LanternEngine-NativePlusHDR). Tone mappers: Vanilla+ by souperman9 (from his RenoDX Bloodborne mod); PsychoV built on PsychoV-30 and the hue correction from RenoDX (© 2026 Carlos Lopez, MIT License, github.com/clshortfuse/renodx)."),
+         };
+ 
+-        public static readonly Choice[] HdrBoost =
++        /// <summary>hdr_tonemapper with Native+ (hdr_mode=nativeplus): 5 Vanilla+ (souperman9's, from his RenoDX Bloodborne mod; the default) or 7 PsychoV (RenoDX's PsychoV-30 with Vanilla+'s curve above mid grey, its bloom and hues). 4, PsychoV-30 alone before PsychoV replaced it, shows as PsychoV (HdrToneMapperValue).</summary>
++        public static readonly Choice[] HdrToneMapper =
+         {
+-            new(L.T("Off"), "0"), new(L.T("Low (default)"), "0.25"), new(L.T("Medium"), "0.5"), new(L.T("High"), "1"),
++            // The segmented buttons show the label up to " (".
++            new("Vanilla+ (by souperman9, default)", "5"), new("PsychoV (PsychoV-30 on Vanilla+'s curve)", "7"),
+         };
+ 
+-        public static readonly Choice[] HdrUiBrightness =
++        /// <summary>The stored hdr_tonemapper as a HdrToneMapper choice, as the engine reads it: 4 and 7 PsychoV, anything else Vanilla+.</summary>
++        public static string HdrToneMapperValue(string stored) => stored == "4" || stored == "7" ? "7" : "5";
++
++
++        public static readonly Choice[] HdrBoost =
+         {
+-            new(L.T("Dimmer"), "0.75"), new(L.T("Paper white (default)"), "1"), new(L.T("Brighter"), "1.25"), new(L.T("Much brighter"), "1.5"),
++            new(L.T("Off"), "0"), new(L.T("Low (default)"), "0.25"), new(L.T("Medium"), "0.5"), new(L.T("High"), "1"),
+         };
+ 
++
+         public static readonly Choice[] HdrUiColor =
+         {
+             new(L.T("Exact (sRGB)"), "0"), new(L.T("In between"), "0.5"), new(L.T("Vivid (default)"), "1"),
+diff --git a/launcher/windows/BloodborneLauncher/Core/DisplayPeak.cs b/launcher/windows/BloodborneLauncher/Core/DisplayPeak.cs
+new file mode 100644
+index 0000000..e5cbd26
+--- /dev/null
++++ b/launcher/windows/BloodborneLauncher/Core/DisplayPeak.cs
+@@ -0,0 +1,124 @@
++using System.Runtime.InteropServices;
++
++namespace BloodborneLauncher.Core
++{
++    /// <summary>
++    /// The peak luminance Windows reports for a display (DXGI_OUTPUT_DESC1::MaxLuminance, as
++    /// RenoDX reads it), only while that display is in HDR: the default Peak brightness, as the
++    /// engine's own (gpu/shim/display_peak.cpp, which this follows). DXGI through its vtables:
++    /// IDXGIFactory1::EnumAdapters1 (12), IDXGIAdapter1::EnumOutputs (7), IDXGIOutput6::GetDesc1
++    /// (27), IUnknown's QueryInterface (0) and Release (2).
++    /// </summary>
++    public static class DisplayPeak
++    {
++        /// <summary>Peak brightness default when Windows reports none (bbport_settings.h).</summary>
++        public const double Fallback = 1000;
++
++        /// <summary>The peak of the display `device` ("\\.\DISPLAY1"; empty: the primary one)
++        /// in nits, 0 when unknown or not in HDR.</summary>
++        public static double Nits(string device)
++        {
++            try
++            {
++                return Query(device);
++            }
++            catch (Exception)
++            {
++                return 0;
++            }
++        }
++
++        /// <summary>The default Peak brightness for the display chosen in the launcher.</summary>
++        public static double Default(string device)
++        {
++            var nits = Nits(device);
++            return nits > 0 ? Math.Clamp(Math.Round(nits), 200, 4000) : Fallback;
++        }
++
++        private static double Query(string device)
++        {
++            var factoryId = new Guid("770aae78-f26f-4dba-a829-253c83d1b387"); // IDXGIFactory1
++            var output6Id = new Guid("068346e8-aaec-4b84-add7-137f513f77a1"); // IDXGIOutput6
++            if (CreateDXGIFactory1(ref factoryId, out var factory) != 0 || factory == IntPtr.Zero) return 0;
++            double primary = 0, chosen = 0, any = 0;
++            try
++            {
++                var enumAdapters = Method<EnumFn>(factory, 12);
++                for (uint a = 0; enumAdapters(factory, a, out var adapter) == 0; ++a)
++                {
++                    try
++                    {
++                        var enumOutputs = Method<EnumFn>(adapter, 7);
++                        for (uint o = 0; enumOutputs(adapter, o, out var output) == 0; ++o)
++                        {
++                            try
++                            {
++                                if (Method<QueryInterfaceFn>(output, 0)(output, ref output6Id, out var output6) != 0) continue;
++                                try
++                                {
++                                    if (Method<GetDesc1Fn>(output6, 27)(output6, out var desc) != 0) continue;
++                                    // The current color space: Windows HDR on for this display.
++                                    if (desc.ColorSpace != Hdr10ColorSpace || desc.MaxLuminance <= 0) continue;
++                                    double nits = desc.MaxLuminance;
++                                    any = Math.Max(any, nits);
++                                    if (device.Length > 0 && string.Equals(desc.DeviceName, device, StringComparison.OrdinalIgnoreCase))
++                                        chosen = nits;
++                                    if (desc.Left == 0 && desc.Top == 0)
++                                        primary = nits;
++                                }
++                                finally { Release(output6); }
++                            }
++                            finally { Release(output); }
++                        }
++                    }
++                    finally { Release(adapter); }
++                }
++            }
++            finally { Release(factory); }
++            return chosen > 0 ? chosen : primary > 0 ? primary : any;
++        }
++
++        private const int Hdr10ColorSpace = 12; // DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020
++
++        private static T Method<T>(IntPtr self, int slot) where T : Delegate
++        {
++            var vtable = Marshal.ReadIntPtr(self);
++            return Marshal.GetDelegateForFunctionPointer<T>(Marshal.ReadIntPtr(vtable, slot * IntPtr.Size));
++        }
++
++        private static void Release(IntPtr self)
++        {
++            if (self != IntPtr.Zero) Method<ReleaseFn>(self, 2)(self);
++        }
++
++        [UnmanagedFunctionPointer(CallingConvention.StdCall)]
++        private delegate int EnumFn(IntPtr self, uint index, out IntPtr result);
++
++        [UnmanagedFunctionPointer(CallingConvention.StdCall)]
++        private delegate int QueryInterfaceFn(IntPtr self, ref Guid id, out IntPtr result);
++
++        [UnmanagedFunctionPointer(CallingConvention.StdCall)]
++        private delegate uint ReleaseFn(IntPtr self);
++
++        [UnmanagedFunctionPointer(CallingConvention.StdCall)]
++        private delegate int GetDesc1Fn(IntPtr self, out OutputDesc1 desc);
++
++        /// <summary>DXGI_OUTPUT_DESC1.</summary>
++        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
++        private struct OutputDesc1
++        {
++            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string DeviceName;
++            public int Left, Top, Right, Bottom; // DesktopCoordinates
++            public int AttachedToDesktop;
++            public int Rotation;
++            public IntPtr Monitor;
++            public uint BitsPerColor;
++            public int ColorSpace;
++            public float RedX, RedY, GreenX, GreenY, BlueX, BlueY, WhiteX, WhiteY;
++            public float MinLuminance, MaxLuminance, MaxFullFrameLuminance;
++        }
++
++        [DllImport("dxgi.dll")]
++        private static extern int CreateDXGIFactory1(ref Guid id, out IntPtr factory);
++    }
++}
+diff --git a/launcher/windows/BloodborneLauncher/Views/DisplayPage.cs b/launcher/windows/BloodborneLauncher/Views/DisplayPage.cs
+index a61642a..b11940d 100644
+--- a/launcher/windows/BloodborneLauncher/Views/DisplayPage.cs
++++ b/launcher/windows/BloodborneLauncher/Views/DisplayPage.cs
+@@ -1,4 +1,4 @@
+-﻿using BloodborneLauncher.Core;
++using BloodborneLauncher.Core;
+ using Wpf.Ui.Controls;
+ using System.Windows;
+ using System.Windows.Controls;
+@@ -10,8 +10,38 @@ namespace BloodborneLauncher.Views
+     {
+         private readonly ComboBox _monitor = new() { Width = 360, VerticalAlignment = VerticalAlignment.Center };
+         private bool _refreshingMonitors;
++        private FrameworkElement? _hdrBoostRow;
++        private FrameworkElement? _hdrBrightnessRow;
++        private FrameworkElement? _hdrColourRow;
++        private FrameworkElement? _hdrToneMapperRow;
+ 
+-        public override void OnShown() => RefreshMonitors();
++        public override void OnShown()
++        {
++            RefreshMonitors();
++            RefreshHdrRows();
++        }
++
++        /// <summary>hdr_mode, Native+'s name before 0.9.38.2 (psychov30) read as nativeplus.</summary>
++        private string HdrMode()
++        {
++            var mode = Ini.Get("hdr_mode", "native");
++            return mode == "psychov30" ? "nativeplus" : mode;
++        }
++
++        private void RefreshHdrRows()
++        {
++            var mode = HdrMode();
++            var psycho = mode == "nativeplus";
++            var native = mode == "native";
++            if (_hdrBoostRow != null)
++                _hdrBoostRow.Visibility = psycho ? Visibility.Collapsed : Visibility.Visible;
++            if (_hdrBrightnessRow != null)
++                _hdrBrightnessRow.Visibility = native || psycho ? Visibility.Visible : Visibility.Collapsed;
++            if (_hdrColourRow != null)
++                _hdrColourRow.Visibility = native ? Visibility.Visible : Visibility.Collapsed;
++            if (_hdrToneMapperRow != null)
++                _hdrToneMapperRow.Visibility = psycho ? Visibility.Visible : Visibility.Collapsed;
++        }
+ 
+         private void RefreshMonitors()
+         {
+@@ -173,12 +203,18 @@ namespace BloodborneLauncher.Views
+                     : L.T("This display shows no HDR");
+             IniToggle(SymbolRegular.Hdr24, L.T("HDR output"), hdrHint, "hdr");
+             ComboRow(SymbolRegular.Lightbulb24, L.T("HDR source"),
+-                L.T("Native: highlights as bright as they are in the game's scene. Expanded: the SDR picture's bright parts made brighter"),
+-                Choices.HdrMode, () => Ini.Get("hdr_mode", "native"), v => Ini.Set("hdr_mode", v));
+-            SliderRow(SymbolRegular.BrightnessHigh24, L.T("Paper white"), L.T("How bright the game's white is, in nits. Range: 10–500"),
+-                10, 500, 1, () => ParseDouble(Ini.Get("hdr_paper_white", "200"), 200),
++                "Native+: the light of the game's scene kept to the screen, tone mapped to your display's peak by Vanilla+ or PsychoV. Native: highlights derived from the game's HDR scene. Expanded: bright SDR pixels expanded towards the peak. Entering or leaving Native+ requires restarting the game.",
++                Choices.HdrMode, HdrMode, v => Ini.Set("hdr_mode", v), changed: RefreshHdrRows);
++            // Defaults, as the engine's: paper white 203 (BT.2408's reference white); the peak from
++            // the display (hdr_peak_auto) unless it is set.
++            const double DefaultPaperWhite = 203;
++            var paperWhite = SliderRow(SymbolRegular.BrightnessHigh24, L.T("Paper white"), "How bright the game's white is, in nits. Default: 203. Range: 10–500",
++                10, 500, 1, () => ParseDouble(Ini.Get("hdr_paper_white", ""), DefaultPaperWhite),
+                 v => Ini.Set("hdr_paper_white", v.ToString("0", System.Globalization.CultureInfo.InvariantCulture)),
+                 format: L.T("0' nits'"), valueWidth: 82);
++            if (paperWhite.Parent is Panel paperWhiteRow)
++                paperWhiteRow.Children.Add(IconButton(SymbolRegular.ArrowCounterclockwise24, "Reset to 203 nits",
++                    (_, _) => paperWhite.Value = DefaultPaperWhite));
+             ToggleRow(SymbolRegular.Desktop24, L.T("Peak brightness from the display"),
+                 L.T("The peak Windows reports for the display the game is on (the Windows HDR Calibration app's, once it has run). Off: the value below"),
+                 () => Ini.Get("hdr_peak_auto", "1") != "0", v => Ini.Set("hdr_peak_auto", v ? "1" : "0"));
+@@ -186,13 +222,42 @@ namespace BloodborneLauncher.Views
+                 10, 4000, 10, () => ParseDouble(Ini.Get("hdr_peak", "1000"), 1000),
+                 v => Ini.Set("hdr_peak", v.ToString("0", System.Globalization.CultureInfo.InvariantCulture)),
+                 format: L.T("0' nits'"), valueWidth: 82);
++            // UI brightness in nits, as RenoDX's (48..500, 203 by default), whatever Paper white. An
++            // older bbport.ini's hdr_ui_brightness (times paper white) shows converted, as the
++            // engine reads it, and goes once this is set.
++            const double DefaultUiNits = 203;
++            double UiNits()
++            {
++                if (Ini.Raw("hdr_ui_nits") is { } nits) return ParseDouble(nits, DefaultUiNits);
++                if (Ini.Raw("hdr_ui_brightness") is { } ratio)
++                    return Math.Round(ParseDouble(ratio, 1) * ParseDouble(Ini.Get("hdr_paper_white", ""), DefaultPaperWhite));
++                return DefaultUiNits;
++            }
++            var uiNits = SliderRow(SymbolRegular.TextFont24, L.T("UI brightness"),
++                "Native and Native+: how bright the HUD, menus and subtitles are, in nits, whatever Paper white. Default: 203. Range: 48–500. Also in the in-game menu, live",
++                48, 500, 1, UiNits,
++                v =>
++                {
++                    Ini.Set("hdr_ui_nits", v.ToString("0", System.Globalization.CultureInfo.InvariantCulture));
++                    Ini.Set("hdr_ui_brightness", null);
++                },
++                format: L.T("0' nits'"), valueWidth: 82);
++            _hdrBrightnessRow = (FrameworkElement)Body.Children[Body.Children.Count - 1];
++            if (uiNits.Parent is Panel uiNitsRow)
++                uiNitsRow.Children.Add(IconButton(SymbolRegular.ArrowCounterclockwise24, "Reset to 203 nits",
++                    (_, _) => uiNits.Value = DefaultUiNits));
+             ComboRow(SymbolRegular.Sparkle24, L.T("Highlight boost"), L.T("Off keeps the game's own look; higher makes lamps, fire and the sky brighter"),
+                 Choices.HdrBoost, () => Ini.Get("hdr_boost", "0.25"), v => Ini.Set("hdr_boost", v));
++            _hdrBoostRow = (FrameworkElement)Body.Children[Body.Children.Count - 1];
++            ComboRow(SymbolRegular.Lightbulb24, L.T("Tone mapper"),
++                "Native+ only. Vanilla+ (by souperman9, from his RenoDX Bloodborne mod): the game's image up to mid grey, brighter highlights up to your display's peak. PsychoV: RenoDX's PsychoV-30 with its shadows, Vanilla+'s curve, bloom and hues above mid grey; deeper blacks, more detail at the top. Also in the in-game menu, live",
++                Choices.HdrToneMapper, () => Choices.HdrToneMapperValue(Ini.Get("hdr_tonemapper", "5")), v => Ini.Set("hdr_tonemapper", v));
++            _hdrToneMapperRow = (FrameworkElement)Body.Children[Body.Children.Count - 1];
+             var hdrMore = Advanced();
+-            ComboRow(SymbolRegular.TextFont24, L.T("UI brightness"), L.T("Native source only: how bright the HUD, menus and subtitles are, against paper white"),
+-                Choices.HdrUiBrightness, () => Ini.Get("hdr_ui_brightness", "1"), v => Ini.Set("hdr_ui_brightness", v), hdrMore);
+             ComboRow(SymbolRegular.Color24, L.T("UI colour"), L.T("Native source only: Vivid shows the HUD and menus with the colours a wide-gamut monitor gives SDR; Exact keeps sRGB's"),
+                 Choices.HdrUiColor, () => Ini.Get("hdr_ui_color", "1"), v => Ini.Set("hdr_ui_color", v), hdrMore);
++            _hdrColourRow = (FrameworkElement)hdrMore.Children[hdrMore.Children.Count - 1];
++            RefreshHdrRows();
+ 
+             Group(L.T("Language"));
+             ComboRow(SymbolRegular.LocalLanguage24, L.T("In-game menu language"), L.T("The port's settings menu (Insert or L3 + R3)"),

@@ -1,20 +1,34 @@
 """Apply the Atlas 3.1 integration to a pristine, pinned Lantern source tree.
 
-The existing Windows 1.9 integration is never edited. Every upstream edit uses
-an exact anchor, and the receipt records both sides of every changed file.
+The existing Windows 1.9 integration is never edited. Native+ HDR's engine patch
+is applied first; every Atlas edit then uses an exact anchor, and the receipt
+records both sides of every changed file.
 """
 from __future__ import annotations
-import argparse, hashlib, json, re, shutil
+import argparse, hashlib, json, os, re, shutil, subprocess
 from pathlib import Path
 
 REPO=Path(__file__).resolve().parents[2]
 PIN='d901fbd2ea4bea114b37c26a2a9278d1e97f7b46'
 SOURCE_TREE_SHA256='96dc305bb14a0e2d47e0b52e3c1a4c7899e9d72be63a65fa3bf0fa37ebc848ad'
+NATIVEPLUS=REPO/'source/nativeplus'
+NATIVEPLUS_SOURCE='LRF17/LanternEngine-NativePlusHDR 556131e92f66352a5f89d426390225681d7c330a'
 
 def sha(p): return hashlib.sha256(p.read_bytes()).hexdigest()
 def replace(text, old, new, *, count=1):
     if text.count(old)!=count: raise ValueError(f'Upstream anchor changed: {old[:100]!r}')
     return text.replace(old,new,count)
+
+def apply_patch(root:Path, patch:Path, directory=''):
+    """Apply a Native+ patch under root (all or nothing) and return both sides of each file."""
+    names=[directory+n for n in re.findall(r'^diff --git a/\S+ b/(\S+)$',patch.read_text(encoding='utf-8'),re.MULTILINE)]
+    before={n:sha(root/n) if (root/n).is_file() else None for n in names}
+    # The prepared tree sits inside this repository: the ceiling keeps git from
+    # resolving the patch's paths against the repository instead of root.
+    env=dict(os.environ,GIT_CEILING_DIRECTORIES=str(root.resolve().parent))
+    command=['git','apply','--whitespace=nowarn']+(['--directory='+directory.rstrip('/')] if directory else [])
+    subprocess.run(command+[str(patch.resolve())],cwd=root,env=env,check=True)
+    return {n:{'before':before[n],'after':sha(root/n)} for n in names}
 
 def prepare(upstream:Path, target:Path):
     if target.exists(): raise ValueError('Prepared source already exists; use a new build directory')
@@ -36,6 +50,12 @@ def prepare(upstream:Path, target:Path):
         dst.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(src,dst)
         receipt['atlas_sources'][relative]=sha(src)
         receipt['copies'][destination]={'source':relative,'sha256':sha(src)}
+
+    # Native+ HDR before Atlas: Atlas's anchors hold on the patched tree, and an
+    # Atlas edit of a file Native+ changed records Native+'s side as its "before".
+    engine_patch=NATIVEPLUS/'nativeplus-engine.patch'
+    receipt['nativeplus']={'source':NATIVEPLUS_SOURCE,'engine_patch_sha256':sha(engine_patch)}
+    receipt['edits'].update(apply_patch(target,engine_patch,'engine/'))
 
     # Guarded position/event-flag readers and existing game-thread travel bridge.
     for name in ('runtime_map.c','runtime_map.h','runtime_atlas_state.c','runtime_atlas_state.h',

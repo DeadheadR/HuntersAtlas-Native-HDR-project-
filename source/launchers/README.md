@@ -17,7 +17,7 @@ Each command compiles and packages only its selected target. Outputs go into
 fresh timestamped directories under `.local/artifacts/windows19/` or
 `.local/artifacts/lantern/`; each target's `latest.json` points to its receipt.
 The player archives are `Hunters-Atlas-3.1-Windows.zip` and
-`Hunters-Atlas-3.1-Lantern.zip`. No command publishes a GitHub release, changes an
+`Hunters-Atlas-3.1-Lantern-NativePlusHDR.zip`. No command publishes a GitHub release, changes an
 installed launcher, accesses saves, or overwrites a previous output.
 `-PackageOnly` packages already built binaries and is for local QA.
 

@@ -45,6 +45,7 @@ def prepare_lantern_inputs(cfg,source):
     inputs=list((REPO/'source/launchers').glob('*'))+list((REPO/'source/compact').glob('*'))
     inputs+=list((REPO/'source/native/src').glob('runtime_*'))
     inputs+=list((REPO/'source/native/src').glob('map_*guard.inc'))+[REPO/'source/lite/integration/bloodborne.ico']
+    inputs+=list((REPO/'source/nativeplus').glob('*.patch'))
     signature={p.relative_to(REPO).as_posix():sha(p) for p in sorted(inputs) if p.is_file()}
     mark=source/'ATLAS-PREPARATION-INPUTS.json'
     if mark.is_file() and load_json(mark)==signature:return
@@ -205,6 +206,25 @@ def stage_lantern(cfg,out,compile_runtime):
             extract(assets,root/'atlas/reference')
         for name,expected in asset_manifest['files'].items():
             if sha(root/'atlas/reference'/safe_name(name))!=expected['sha256']:raise ValueError('Reference asset mismatch: '+name)
+    # Native+ HDR: its notices (RenoDX's MIT license for PsychoV-30's code), its guide,
+    # and an example lantern.ini for its HDR mode.
+    shutil.copytree(REPO/'source/nativeplus/licenses',root/'licenses')
+    shutil.copy2(REPO/'source/nativeplus/README.md',root/'README-NativePlusHDR.md')
+    (root/'nativeplus-example.ini').write_text(
+        # No hdr_peak / hdr_paper_white: the peak comes from the display (hdr_peak_auto), the paper
+        # white is the engine's 203 nits.
+        'hdr=1\nhdr_mode=nativeplus\n'
+        'hdr_tonemapper=5\nhdr_exposure=1\nhdr_grade_highlights=50\nhdr_shadows=50\n'
+        'hdr_contrast=50\nhdr_saturation=50\nhdr_bloom=50\nhdr_scene_grading=100\n'
+        'hdr_black_floor=0\n',encoding='utf-8')
+    # The shipped defaults start on Native+, as Native+'s own package does. HDR output stays
+    # opt-in (Windows HDR must be on too); peak and paper white come from the display.
+    ini=root/'engine/lantern.default.ini'
+    defaults=dict(line.split('=',1) for line in (root/'nativeplus-example.ini').read_text().splitlines())
+    defaults.pop('hdr')
+    lines=[line for line in ini.read_text(encoding='utf-8-sig').splitlines()
+           if line.split('=',1)[0].strip() not in defaults.keys()|{'hdr_peak','hdr_paper_white'}]
+    ini.write_text('\n'.join(lines+[f'{k}={v}' for k,v in defaults.items()])+'\n',encoding='utf-8')
     # A generic initial file is copied from shipped defaults; never use a developer's personal preferences.
     shutil.copy2(root/'engine/lantern.default.ini',root/'lantern.ini')
     for file in ('NOTICE','LICENSE'):
@@ -219,6 +239,7 @@ def stage_lantern(cfg,out,compile_runtime):
     shutil.copy2(REPO/'docs/INSTALL-LAUNCHERS.md',root/'INSTALL.md')
     (root/'README.txt').write_text(f"Hunter's Atlas {VERSION} - Awakenchan-compatible edition\n\n"
         "Based on Lantern Engine v0.9.37.\nLantern Engine by Awaken (https://github.com/Awakenchan/LanternEngine)\n"
+        "Native+ HDR by LRF17 (https://github.com/LRF17/LanternEngine-NativePlusHDR): Display > HDR mode > Native+. See README-NativePlusHDR.md.\n"
         "Modified for Hunter's Atlas; not an official Lantern Engine release.\n\n"
         "Extract into a new folder. Run Install.cmd, select your CUSA00207 1.09 game and existing save folder, then Play / Continue. Press M for the map.\n"
         "Find Settings > Hunter's Atlas > Enable Hunter's Atlas. It is integrated into this edition; a separate entry in the ordinary Mods list is not required.\n"
@@ -246,7 +267,7 @@ def main():
     out=base/stamp
     out.mkdir(parents=True,exist_ok=False)
     root=stage_windows(cfg,out,not a.package_only) if a.target=='windows19' else stage_lantern(cfg,out,not a.package_only)
-    label='Windows' if a.target=='windows19' else 'Lantern'
+    label='Windows' if a.target=='windows19' else 'Lantern-NativePlusHDR'
     result=zip_player(root,out/f'Hunters-Atlas-{VERSION}-{label}.zip')
     result.update(target=a.target,atlas_version=VERSION)
     write_json(out/'build-receipt.json',result)

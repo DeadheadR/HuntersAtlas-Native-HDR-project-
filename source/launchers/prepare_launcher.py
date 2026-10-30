@@ -1,7 +1,7 @@
 """Prepare the Lantern UI as an explicitly branded Atlas edition with private settings."""
 from pathlib import Path
 import argparse, hashlib, json, shutil
-from prepare_lantern import replace, REPO
+from prepare_lantern import replace, apply_patch, REPO, NATIVEPLUS
 
 def prepare(root:Path):
     app=root/'launcher/windows/BloodborneLauncher'
@@ -10,6 +10,12 @@ def prepare(root:Path):
         path=app/name;before=hashlib.sha256(path.read_bytes()).hexdigest()
         path.write_text(fn(path.read_text(encoding='utf-8-sig')),encoding='utf-8',newline='\n')
         proof[name]={'before':before,'after':hashlib.sha256(path.read_bytes()).hexdigest()}
+    # Native+ HDR's display page, peak detection and choices only: Atlas keeps its own
+    # identity, settings folder and update policy. Atlas edits none of these files.
+    prefix='launcher/windows/BloodborneLauncher/'
+    for name,sides in apply_patch(root,NATIVEPLUS/'nativeplus-launcher.patch').items():
+        if not name.startswith(prefix):raise ValueError('Native+ launcher patch outside the Windows launcher: '+name)
+        proof[name[len(prefix):]]=sides
     shutil.copy2(REPO/'source/launchers/AtlasIntegration.cs',app/'Core/AtlasIntegration.cs')
     edit('Core/Paths.cs',lambda s:replace(replace(s,'public static readonly string ConfigDir = MigratedConfigDir();',
         'public static readonly string ConfigDir = AtlasIntegration.ConfigDirectory();'),
@@ -45,7 +51,7 @@ def prepare(root:Path):
         s=replace(s,signature+'\n        {',signature+'\n        {\n'
             '            if (AtlasIntegration.ProtectRuntimeUpdates) throw new InvalidOperationException("Install Atlas updates from the complete matching Atlas ZIP. Stock engine updates cannot be installed over this modified runtime.");')
         s=replace(s,'public static string CurrentLabel => Label(Current, CurrentBeta);',
-            'public static string CurrentLabel => "Atlas 3.1 (based on Lantern 0.9.37)";')
+            'public static string CurrentLabel => "Atlas 3.1 + Native+ HDR (based on Lantern 0.9.37)";')
         return s
     edit('Core/Updater.cs',updater)
     edit('App.xaml.cs',lambda s:replace(s,'if (Core.LanternRename.Run(e.Args))','if (Core.AtlasIntegration.AllowLegacyRename && Core.LanternRename.Run(e.Args))'))
@@ -62,7 +68,7 @@ def prepare(root:Path):
     def settings(s):
         anchor='            Group(L.T("Appearance"));'
         page='''            Group("Hunter's Atlas 3.1");
-            Body.Children.Add(new TextBlock { Text = AtlasIntegration.Credit + "\\n" + AtlasIntegration.Modified,
+            Body.Children.Add(new TextBlock { Text = AtlasIntegration.Credit + "\\n" + AtlasIntegration.NativePlusCredit + "\\n" + AtlasIntegration.Modified,
                 TextWrapping = TextWrapping.Wrap, Margin = new Thickness(14, 4, 14, 12) });
             SettingToggle(SymbolRegular.Map24, "Enable Hunter's Atlas", "Press M in game. Changes apply on the next game launch.", "atlas_enabled");
             SettingToggle(SymbolRegular.Map24, "Discovered-lamp travel", "Use the game's normal travel system for eligible, discovered destinations.", "atlas_travel_enabled");

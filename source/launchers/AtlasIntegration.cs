@@ -11,6 +11,7 @@ public static class AtlasIntegration
 {
     public const string Product = "Hunter's Atlas 3.1";
     public const string Credit = "Lantern Engine by Awaken (https://github.com/Awakenchan/LanternEngine)";
+    public const string NativePlusCredit = "Native+ HDR by LRF17 (https://github.com/LRF17/LanternEngine-NativePlusHDR)";
     public const string Modified = "Modified for Hunter's Atlas; this is not an official Lantern Engine release.";
     public static bool ProtectRuntimeUpdates => true;
     public static bool AllowLegacyRename => false;
