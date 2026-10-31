@@ -2,6 +2,8 @@ This is a fork of Hunter's Atlas, MikeTat1988's fork of Lantern Engine by Awaken
 
 This particular build is made to work with CUSA03173. At the time of creating this, that specific version of MikeTat1988's Hunter's Atlas is still in the testing phase, and there is no guarantee that this 100% works without issue. Preliminary testing has resulted zero errors thus far, but that is an extremely shallow assessment. 
 
+
+
 Credit:
 
 MikeTat1988's Hunter's Atlas (Windows/Lantern Engine):
@@ -13,7 +15,11 @@ https://github.com/LRF17/LanternEngine-NativePlusHDR
 AwakenChan's Lantern Engine:
 https://github.com/Awakenchan/LanternEngine
 
+
+
 All credit goes to the folks mentioned above; they did all the real work. 
+
+
 
 The following readme is directly from the Hunter's Atlas repo this was forked from.
 
