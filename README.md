@@ -1,3 +1,22 @@
+This is a fork of Hunter's Atlas, MikeTat1988's fork of Lantern Engine by AwakenChan, combined with another LE fork, LRF17's NativePlusHDR (RenoDX-style HDR implementation). It generates map assets using your game folder and then implements an in-game map with configurable display toggles: Enable Atlas/Fast travel to discovered lamps/Item markers/Fog of exploration-style map reveal/NPC markers (with options for All/New dialog only/hidden).
+
+This particular build is made to work with CUSA03173. At the time of creating this, that specific version of MikeTat1988's Hunter's Atlas is still in the testing phase, and there is no guarantee that this 100% works without issue. Preliminary testing has resulted zero errors thus far, but that is an extremely shallow assessment. 
+
+Credit:
+
+MikeTat1988's Hunter's Atlas (Windows/Lantern Engine):
+https://github.com/MikeTat1988/HuntersAtlas
+
+LRF17's NativePlusHDR:
+https://github.com/LRF17/LanternEngine-NativePlusHDR
+
+AwakenChan's Lantern Engine:
+https://github.com/Awakenchan/LanternEngine
+
+All credit goes to the folks mentioned above; they did all the real work. 
+
+The following readme is directly from the Hunter's Atlas repo this was forked from.
+
 # Hunter's Atlas 3.1
 
 Choose the ZIP for the launcher you want:
